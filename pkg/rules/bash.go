@@ -82,7 +82,13 @@ func bashMatch(pattern, command string) bool {
 	// The docs say: space before * "enforces a word boundary, requiring the
 	// prefix to be followed by a space or end-of-string."
 	if prefix, ok := strings.CutSuffix(pattern, " *"); ok {
-		return globMatch(prefix, command)
+		if globMatch(prefix, command) {
+			return true
+		}
+	}
+	// See through a `timeout` wrapper to match the underlying command.
+	if stripped, ok := stripTimeoutPrefix(command); ok {
+		return bashMatch(pattern, stripped)
 	}
 	return false
 }
@@ -149,6 +155,48 @@ func containsAnyOperator(s string) bool {
 		}
 	}
 	return false
+}
+
+// stripTimeoutPrefix removes a leading `timeout [flags] <duration>` from a
+// command string, returning the actual command that follows. Returns ("", false)
+// if the command doesn't start with "timeout " or has no command after the
+// timeout arguments.
+func stripTimeoutPrefix(command string) (string, bool) {
+	s := strings.TrimSpace(command)
+	if !strings.HasPrefix(s, "timeout ") {
+		return "", false
+	}
+	s = strings.TrimSpace(s[len("timeout"):])
+
+	// Skip flags and their arguments.
+	for strings.HasPrefix(s, "-") {
+		end := strings.IndexByte(s, ' ')
+		if end == -1 {
+			return "", false
+		}
+		flag := s[:end]
+		s = strings.TrimSpace(s[end:])
+
+		// Flags that take a separate argument (without =).
+		if flag == "-k" || flag == "-s" || flag == "--kill-after" || flag == "--signal" {
+			end = strings.IndexByte(s, ' ')
+			if end == -1 {
+				return "", false
+			}
+			s = strings.TrimSpace(s[end:])
+		}
+	}
+
+	// Skip the duration (one word).
+	end := strings.IndexByte(s, ' ')
+	if end == -1 {
+		return "", false
+	}
+	s = strings.TrimSpace(s[end:])
+	if s == "" {
+		return "", false
+	}
+	return s, true
 }
 
 // globMatch performs glob-style pattern matching where * matches any sequence

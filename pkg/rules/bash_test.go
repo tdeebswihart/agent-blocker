@@ -184,6 +184,51 @@ func TestBashRule_ForceFlags(t *testing.T) {
 	}
 }
 
+func TestBashRule_TimeoutPrefix(t *testing.T) {
+	allow := Bash(Allow, "go test *")
+	deny := Bash(Deny, "rm -rf *")
+
+	// Basic timeout prefix — should see through to actual command
+	if result := allow.Apply(BashInput{Command: "timeout 5m go test ./..."}); result == nil {
+		t.Fatal("expected match for 'timeout 5m go test ./...'")
+	}
+	if result := deny.Apply(BashInput{Command: "timeout 30s rm -rf /"}); result == nil {
+		t.Fatal("expected match for 'timeout 30s rm -rf /'")
+	} else if result.Decision != Deny {
+		t.Fatalf("expected Deny, got %s", result.Decision)
+	}
+
+	// With flags: -k (kill-after) takes a separate argument
+	if result := allow.Apply(BashInput{Command: "timeout -k 10s 5m go test ./..."}); result == nil {
+		t.Fatal("expected match with -k flag")
+	}
+
+	// With --signal=KILL (long flag with =)
+	if result := deny.Apply(BashInput{Command: "timeout --signal=KILL 5m rm -rf /"}); result == nil {
+		t.Fatal("expected match with --signal=KILL flag")
+	}
+
+	// With --signal KILL (long flag with separate arg)
+	if result := deny.Apply(BashInput{Command: "timeout --signal KILL 5m rm -rf /"}); result == nil {
+		t.Fatal("expected match with --signal KILL flag")
+	}
+
+	// No command after timeout — should NOT match
+	if result := allow.Apply(BashInput{Command: "timeout 5m"}); result != nil {
+		t.Fatal("expected no match for timeout with no command")
+	}
+
+	// -timeout as a flag to another command should NOT be stripped
+	if result := allow.Apply(BashInput{Command: "go test -timeout 5m ./..."}); result == nil {
+		t.Fatal("expected match for 'go test -timeout 5m ./...' (direct, not stripped)")
+	}
+
+	// Shell operators with timeout — operator check still applies
+	if result := allow.Apply(BashInput{Command: "timeout 5m go test && rm -rf /"}); result != nil {
+		t.Fatal("expected no match — shell operators should still be caught")
+	}
+}
+
 func TestBashRule_MiddleWildcard(t *testing.T) {
 	rule := Bash(Allow, "git * main")
 
