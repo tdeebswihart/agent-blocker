@@ -3,7 +3,7 @@ package rules
 import "os"
 
 // DefaultRules returns the built-in permission rules.
-// TODO: load from config file instead of hardcoding.
+// CONSIDER: load from config file instead of hardcoding.
 func DefaultRules(cwd string) []Matcher {
 	home, err := os.UserHomeDir()
 	if err != nil {

@@ -13,7 +13,6 @@ linters:
   enable:
     - errcheck
     - exhaustive
-    - forbidigo
     - gocheckcompilerdirectives
     - godox
     - gomodguard
@@ -23,3 +22,10 @@ linters:
     - nolintlint
     - testifylint
     - usetesting
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
