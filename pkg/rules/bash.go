@@ -41,10 +41,28 @@ func (r *BashRule) Apply(input BashInput) *Result {
 	return nil
 }
 
-// normalizeColonStar replaces every ":*" with " *".
-// The docs say `:*` is the legacy suffix syntax equivalent to ` *`.
+// normalizeColonStar replaces ":*" with " *" when preceded by a word character
+// (the usual command:args separator), or with just "*" when preceded by a
+// non-word character like "/" (e.g., "jj bookmark create tim/:*" → "…tim/*").
 func normalizeColonStar(pattern string) string {
-	return strings.ReplaceAll(pattern, ":*", " *")
+	var b strings.Builder
+	for i := 0; i < len(pattern); i++ {
+		if i+1 < len(pattern) && pattern[i] == ':' && pattern[i+1] == '*' {
+			if i > 0 && isWordChar(pattern[i-1]) {
+				b.WriteByte(' ')
+			}
+			b.WriteByte('*')
+			i++ // skip '*'
+		} else {
+			b.WriteByte(pattern[i])
+		}
+	}
+	return b.String()
+}
+
+func isWordChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9') || c == '-' || c == '_'
 }
 
 // bashMatch checks if a command matches a glob pattern, with shell operator

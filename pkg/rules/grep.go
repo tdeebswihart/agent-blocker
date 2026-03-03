@@ -12,6 +12,7 @@ type GrepInput struct {
 }
 
 type GrepRule struct {
+	toolName string
 	decision Decision
 	matchers []pathMatcher
 }
@@ -26,12 +27,23 @@ func Grep(decision Decision, args ...any) *GrepRule {
 	for i, p := range patterns {
 		matchers[i] = newPathMatcher(opts.CWD, opts.Home, opts.ProjectRoot, p)
 	}
-	return &GrepRule{decision: decision, matchers: matchers}
+	return &GrepRule{toolName: "Grep", decision: decision, matchers: matchers}
+}
+
+// Search creates a rule that matches Search tool operations. Search is an alias
+// for Grep — same path matching semantics, different tool name.
+func Search(decision Decision, args ...any) *GrepRule {
+	patterns, opts := parsePathArgs(args)
+	matchers := make([]pathMatcher, len(patterns))
+	for i, p := range patterns {
+		matchers[i] = newPathMatcher(opts.CWD, opts.Home, opts.ProjectRoot, p)
+	}
+	return &GrepRule{toolName: "Search", decision: decision, matchers: matchers}
 }
 
 func (r *GrepRule) Apply(input GrepInput) *Result {
 	if len(r.matchers) == 0 {
-		return NewResult(r.decision, "matches all Grep operations")
+		return NewResult(r.decision, "matches all "+r.toolName+" operations")
 	}
 	for _, m := range r.matchers {
 		if m.match(input.Path) {
@@ -41,7 +53,7 @@ func (r *GrepRule) Apply(input GrepInput) *Result {
 	return nil
 }
 
-func (r *GrepRule) ToolName() string       { return "Grep" }
+func (r *GrepRule) ToolName() string       { return r.toolName }
 func (r *GrepRule) Decision() Decision     { return r.decision }
 func (r *GrepRule) Match(_ string, input json.RawMessage) *Result {
 	var in GrepInput

@@ -12,6 +12,7 @@ type WebFetchInput struct {
 }
 
 type WebFetchRule struct {
+	toolName string
 	decision Decision
 	domains  []string
 }
@@ -26,12 +27,24 @@ func WebFetch(decision Decision, specifiers ...string) *WebFetchRule {
 			domains = append(domains, d)
 		}
 	}
-	return &WebFetchRule{decision: decision, domains: domains}
+	return &WebFetchRule{toolName: "WebFetch", decision: decision, domains: domains}
+}
+
+// WebSearch creates a rule that matches WebSearch operations using the same
+// domain matching semantics as WebFetch.
+func WebSearch(decision Decision, specifiers ...string) *WebFetchRule {
+	var domains []string
+	for _, s := range specifiers {
+		if d, ok := strings.CutPrefix(s, "domain:"); ok {
+			domains = append(domains, d)
+		}
+	}
+	return &WebFetchRule{toolName: "WebSearch", decision: decision, domains: domains}
 }
 
 func (r *WebFetchRule) Apply(input WebFetchInput) *Result {
 	if len(r.domains) == 0 {
-		return NewResult(r.decision, "matches all WebFetch operations")
+		return NewResult(r.decision, "matches all "+r.toolName+" operations")
 	}
 	parsed, err := url.Parse(input.URL)
 	if err != nil {
@@ -46,7 +59,7 @@ func (r *WebFetchRule) Apply(input WebFetchInput) *Result {
 	return nil
 }
 
-func (r *WebFetchRule) ToolName() string       { return "WebFetch" }
+func (r *WebFetchRule) ToolName() string       { return r.toolName }
 func (r *WebFetchRule) Decision() Decision     { return r.decision }
 func (r *WebFetchRule) Match(_ string, input json.RawMessage) *Result {
 	var in WebFetchInput
