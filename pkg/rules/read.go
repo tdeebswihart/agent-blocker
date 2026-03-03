@@ -1,5 +1,7 @@
 package rules
 
+import "encoding/json"
+
 type ReadInput struct {
 	FilePath string `json:"file_path"`
 	Offset   int    `json:"offset,omitempty"`
@@ -57,4 +59,14 @@ func parsePathArgs(args []any) ([]string, PathOpts) {
 		}
 	}
 	return patterns, opts
+}
+
+func (r *ReadRule) ToolName() string       { return "Read" }
+func (r *ReadRule) Decision() Decision     { return r.decision }
+func (r *ReadRule) Match(_ string, input json.RawMessage) *Result {
+	var in ReadInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return nil
+	}
+	return r.Apply(in)
 }

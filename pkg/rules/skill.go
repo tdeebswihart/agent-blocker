@@ -1,5 +1,7 @@
 package rules
 
+import "encoding/json"
+
 type SkillInput struct {
 	Skill string `json:"skill"`
 	Args  string `json:"args,omitempty"`
@@ -27,4 +29,14 @@ func (r *SkillRule) Apply(input SkillInput) *Result {
 		}
 	}
 	return nil
+}
+
+func (r *SkillRule) ToolName() string       { return "Skill" }
+func (r *SkillRule) Decision() Decision     { return r.decision }
+func (r *SkillRule) Match(_ string, input json.RawMessage) *Result {
+	var in SkillInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return nil
+	}
+	return r.Apply(in)
 }

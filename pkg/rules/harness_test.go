@@ -1,0 +1,201 @@
+package rules
+
+import (
+	"encoding/json"
+	"testing"
+)
+
+func mustJSON(v any) json.RawMessage {
+	b, _ := json.Marshal(v)
+	return b
+}
+
+func TestHarness_DenyBeforeAllow(t *testing.T) {
+	h := NewHarness(
+		Bash(Allow, "rm *"),
+		Bash(Deny, "rm -rf *"),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Bash",
+		Input: mustJSON(BashInput{Command: "rm -rf /"}),
+	})
+	if result.Decision != Deny {
+		t.Fatalf("expected Deny (deny beats allow), got %s", result.Decision)
+	}
+}
+
+func TestHarness_DenyBeforeAsk(t *testing.T) {
+	h := NewHarness(
+		Bash(Ask, "git push *"),
+		Bash(Deny, "git push --force*"),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Bash",
+		Input: mustJSON(BashInput{Command: "git push --force"}),
+	})
+	if result.Decision != Deny {
+		t.Fatalf("expected Deny (deny beats ask), got %s", result.Decision)
+	}
+}
+
+func TestHarness_AskBeforeAllow(t *testing.T) {
+	h := NewHarness(
+		Bash(Allow, "curl *"),
+		Bash(Ask, "curl *"),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Bash",
+		Input: mustJSON(BashInput{Command: "curl http://example.com"}),
+	})
+	if result.Decision != Ask {
+		t.Fatalf("expected Ask (ask beats allow), got %s", result.Decision)
+	}
+}
+
+func TestHarness_AllowWhenMatched(t *testing.T) {
+	h := NewHarness(
+		Bash(Allow, "make lint"),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Bash",
+		Input: mustJSON(BashInput{Command: "make lint"}),
+	})
+	if result.Decision != Allow {
+		t.Fatalf("expected Allow, got %s", result.Decision)
+	}
+}
+
+func TestHarness_DefaultAskWhenNoMatch(t *testing.T) {
+	h := NewHarness(
+		Bash(Allow, "make lint"),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Bash",
+		Input: mustJSON(BashInput{Command: "rm -rf /"}),
+	})
+	if result.Decision != Ask {
+		t.Fatalf("expected default Ask when no rules match, got %s", result.Decision)
+	}
+}
+
+func TestHarness_DefaultAskForUnknownTool(t *testing.T) {
+	h := NewHarness(
+		Bash(Allow, "make lint"),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "SomethingNew",
+		Input: mustJSON(map[string]string{"foo": "bar"}),
+	})
+	if result.Decision != Ask {
+		t.Fatalf("expected default Ask for unknown tool, got %s", result.Decision)
+	}
+}
+
+func TestHarness_MCPWildcardRules(t *testing.T) {
+	h := NewHarness(
+		MCP(Allow, "mcp__gopls__go_*"),
+	)
+
+	// MCP rules (ToolName="") are wildcards, checked for every tool
+	result := h.Evaluate(HookInput{
+		Name:  "mcp__gopls__go_doc",
+		Input: mustJSON(map[string]any{}),
+	})
+	if result.Decision != Allow {
+		t.Fatalf("expected Allow from MCP wildcard, got %s", result.Decision)
+	}
+
+	// Shouldn't match different MCP server
+	result = h.Evaluate(HookInput{
+		Name:  "mcp__other__tool",
+		Input: mustJSON(map[string]any{}),
+	})
+	if result.Decision != Ask {
+		t.Fatalf("expected default Ask for non-matching MCP tool, got %s", result.Decision)
+	}
+}
+
+func TestHarness_MixedToolTypes(t *testing.T) {
+	opts := PathOpts{CWD: "/proj", Home: "/home/me", ProjectRoot: "/proj"}
+	h := NewHarness(
+		Bash(Allow, "make lint"),
+		Read(Deny, "./.env", opts),
+		Read(Allow, opts), // bare Read = allow all
+	)
+
+	// Bash allow
+	result := h.Evaluate(HookInput{
+		Name:  "Bash",
+		Input: mustJSON(BashInput{Command: "make lint"}),
+	})
+	if result.Decision != Allow {
+		t.Fatalf("expected Allow for make lint, got %s", result.Decision)
+	}
+
+	// Read deny for .env
+	result = h.Evaluate(HookInput{
+		Name:  "Read",
+		Input: mustJSON(ReadInput{FilePath: "/proj/.env"}),
+	})
+	if result.Decision != Deny {
+		t.Fatalf("expected Deny for .env read, got %s", result.Decision)
+	}
+
+	// Read allow for other files
+	result = h.Evaluate(HookInput{
+		Name:  "Read",
+		Input: mustJSON(ReadInput{FilePath: "/proj/main.go"}),
+	})
+	if result.Decision != Allow {
+		t.Fatalf("expected Allow for main.go read, got %s", result.Decision)
+	}
+}
+
+func TestHarness_FirstMatchWinsWithinPriority(t *testing.T) {
+	h := NewHarness(
+		Bash(Deny, "rm *"),
+		Bash(Deny, "rm -rf *"),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Bash",
+		Input: mustJSON(BashInput{Command: "rm -rf /"}),
+	})
+	if result.Decision != Deny {
+		t.Fatalf("expected Deny, got %s", result.Decision)
+	}
+	// Both deny rules match, first one wins — check reason
+	if result.Reason != "matched pattern: rm *" {
+		t.Fatalf("expected first deny rule to win, got reason: %s", result.Reason)
+	}
+}
+
+func TestHarness_LogMCPSpecificTool(t *testing.T) {
+	opts := PathOpts{CWD: "/proj", Home: "/home/me", ProjectRoot: "/proj"}
+	h := NewHarness(
+		LogMCP(Deny, "./.secrets/**", opts),
+		LogMCP(Allow, opts), // bare = allow all
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "mcp__log-mcp__search_logs",
+		Input: mustJSON(LogMCPInput{FilePath: "/proj/.secrets/api.log"}),
+	})
+	if result.Decision != Deny {
+		t.Fatalf("expected Deny for secrets log, got %s", result.Decision)
+	}
+
+	result = h.Evaluate(HookInput{
+		Name:  "mcp__log-mcp__search_logs",
+		Input: mustJSON(LogMCPInput{FilePath: "/proj/test.log"}),
+	})
+	if result.Decision != Allow {
+		t.Fatalf("expected Allow for test.log, got %s", result.Decision)
+	}
+}

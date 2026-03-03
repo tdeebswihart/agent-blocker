@@ -1,5 +1,7 @@
 package rules
 
+import "encoding/json"
+
 type MCPRule struct {
 	decision Decision
 	patterns []string
@@ -21,4 +23,12 @@ func (r *MCPRule) Apply(toolName string) *Result {
 		}
 	}
 	return nil
+}
+
+// MCPRule matches on tool name patterns, not a fixed tool name.
+// ToolName returns "" so the harness treats it as a wildcard matcher.
+func (r *MCPRule) ToolName() string       { return "" }
+func (r *MCPRule) Decision() Decision     { return r.decision }
+func (r *MCPRule) Match(toolName string, _ json.RawMessage) *Result {
+	return r.Apply(toolName)
 }

@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/buildkite/shellwords"
@@ -159,4 +160,14 @@ func globMatch(pattern, s string) bool {
 		px++
 	}
 	return px == len(pattern)
+}
+
+func (r *BashRule) ToolName() string       { return "Bash" }
+func (r *BashRule) Decision() Decision     { return r.decision }
+func (r *BashRule) Match(_ string, input json.RawMessage) *Result {
+	var in BashInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return nil
+	}
+	return r.Apply(in)
 }

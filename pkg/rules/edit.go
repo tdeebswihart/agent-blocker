@@ -1,5 +1,7 @@
 package rules
 
+import "encoding/json"
+
 type EditInput struct {
 	FilePath   string `json:"file_path"`
 	OldString  string `json:"old_string,omitempty"`
@@ -33,4 +35,14 @@ func (r *EditRule) Apply(input EditInput) *Result {
 		}
 	}
 	return nil
+}
+
+func (r *EditRule) ToolName() string       { return "Edit" }
+func (r *EditRule) Decision() Decision     { return r.decision }
+func (r *EditRule) Match(_ string, input json.RawMessage) *Result {
+	var in EditInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return nil
+	}
+	return r.Apply(in)
 }

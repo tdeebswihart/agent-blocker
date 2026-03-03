@@ -25,6 +25,22 @@ type PreToolUseOutput struct {
 	AdditionalContext  string   `json:"additionalContext,omitempty"`
 }
 
+// Matcher is the common interface for all rule types. The harness uses this
+// to group rules by tool name and decision priority.
+type Matcher interface {
+	ToolName() string
+	Decision() Decision
+	Match(toolName string, input json.RawMessage) *Result
+}
+
+// HookInput is the JSON structure received from Claude Code's PreToolUse hook.
+type HookInput struct {
+	Event string          `json:"hook_event_name"`
+	Name  string          `json:"tool_name"`
+	CWD   string          `json:"cwd"`
+	Input json.RawMessage `json:"tool_input"`
+}
+
 func NewResult(decision Decision, reason string) *Result {
 	output := PreToolUseOutput{
 		HookEventName:      "PreToolUse",
