@@ -247,7 +247,7 @@ func TestHarness_ExactAllowBeatsUnspecifiedDeny(t *testing.T) {
 	// An exact-path allow should beat a bare (Unspecified) deny-all.
 	opts := PathOpts{CWD: "/proj", Home: "/home/me", ProjectRoot: "/proj"}
 	h := NewHarness(
-		Read(Deny, opts),                             // bare deny-all (Unspecified)
+		Read(Deny, opts), // bare deny-all (Unspecified)
 		Read(Allow, "~/.config/gh/config.yaml", opts), // exact allow
 	)
 

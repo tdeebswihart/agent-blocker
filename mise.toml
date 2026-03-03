@@ -1,0 +1,17 @@
+[tools]
+go = "1.26.0"
+"golangci-lint" = "2.10.1"
+
+[tasks.fix]
+description = "Run go fix on all packages"
+run = "go fix ./..."
+
+[tasks.format]
+description = "Format code with golangci-lint"
+depends = ["fix"]
+run = "golangci-lint fmt ./..."
+
+[tasks.lint]
+description = "Lint and autofix with golangci-lint"
+depends = ["format"]
+run = "golangci-lint run --fix"

@@ -1,0 +1,25 @@
+version: "2"
+
+formatters:
+  enable:
+    - golines
+    - gofmt
+  settings:
+    golines:
+      max-len: 100
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - exhaustive
+    - forbidigo
+    - gocheckcompilerdirectives
+    - godox
+    - gomodguard
+    - govet
+    - iotamixing
+    - revive
+    - nolintlint
+    - testifylint
+    - usetesting

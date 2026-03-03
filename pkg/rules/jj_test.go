@@ -92,8 +92,8 @@ func TestJJLogAllEmpty(t *testing.T) {
 		{"EMPTY\nEMPTY\n", true},
 		{"EMPTY\nNOTEMPTY\n", false},
 		{"NOTEMPTY\n", false},
-		{"EMPTY", true},           // no trailing newline
-		{"", false},               // empty output = no revisions resolved
+		{"EMPTY", true}, // no trailing newline
+		{"", false},     // empty output = no revisions resolved
 		{"NOTEMPTY\nEMPTY\n", false},
 	}
 	for _, tt := range tests {

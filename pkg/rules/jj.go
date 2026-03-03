@@ -30,7 +30,7 @@ func jjLogAllEmpty(output string) bool {
 	if trimmed == "" {
 		return false
 	}
-	for _, line := range strings.Split(trimmed, "\n") {
+	for line := range strings.SplitSeq(trimmed, "\n") {
 		if strings.TrimSpace(line) != "EMPTY" {
 			return false
 		}

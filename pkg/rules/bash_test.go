@@ -204,12 +204,16 @@ func TestBashRule_TimeoutPrefix(t *testing.T) {
 	}
 
 	// With --signal=KILL (long flag with =)
-	if result := deny.Apply(BashInput{Command: "timeout --signal=KILL 5m rm -rf /"}); result == nil {
+	if result := deny.Apply(
+		BashInput{Command: "timeout --signal=KILL 5m rm -rf /"},
+	); result == nil {
 		t.Fatal("expected match with --signal=KILL flag")
 	}
 
 	// With --signal KILL (long flag with separate arg)
-	if result := deny.Apply(BashInput{Command: "timeout --signal KILL 5m rm -rf /"}); result == nil {
+	if result := deny.Apply(
+		BashInput{Command: "timeout --signal KILL 5m rm -rf /"},
+	); result == nil {
 		t.Fatal("expected match with --signal KILL flag")
 	}
 
