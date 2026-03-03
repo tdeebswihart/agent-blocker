@@ -27,8 +27,7 @@ func (r *MCPRule) Apply(toolName string) *Result {
 
 // MCPRule matches on tool name patterns, not a fixed tool name.
 // ToolName returns "" so the harness treats it as a wildcard matcher.
-func (r *MCPRule) ToolName() string       { return "" }
-func (r *MCPRule) Decision() Decision     { return r.decision }
+func (r *MCPRule) ToolName() string { return "" }
 func (r *MCPRule) Match(toolName string, _ json.RawMessage) *Result {
 	return r.Apply(toolName)
 }

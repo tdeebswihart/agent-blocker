@@ -34,8 +34,7 @@ func (r *AgentRule) Apply(input AgentInput) *Result {
 	return nil
 }
 
-func (r *AgentRule) ToolName() string       { return "Agent" }
-func (r *AgentRule) Decision() Decision     { return r.decision }
+func (r *AgentRule) ToolName() string { return "Agent" }
 func (r *AgentRule) Match(_ string, input json.RawMessage) *Result {
 	var in AgentInput
 	if err := json.Unmarshal(input, &in); err != nil {

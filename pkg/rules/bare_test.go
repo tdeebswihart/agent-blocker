@@ -17,7 +17,10 @@ func TestBareToolRule_ToolName(t *testing.T) {
 	if rule.ToolName() != "WebSearch" {
 		t.Fatalf("expected WebSearch, got %s", rule.ToolName())
 	}
-	if rule.Decision() != Ask {
-		t.Fatalf("expected Ask, got %s", rule.Decision())
+	// Decision is embedded in the result, not on the rule
+	if result := rule.Match("WebSearch", nil); result == nil {
+		t.Fatal("expected match")
+	} else if result.Decision != Ask {
+		t.Fatalf("expected Ask, got %s", result.Decision)
 	}
 }

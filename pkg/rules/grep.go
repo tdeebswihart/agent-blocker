@@ -54,8 +54,7 @@ func (r *GrepRule) Apply(input GrepInput) *Result {
 	return nil
 }
 
-func (r *GrepRule) ToolName() string       { return r.toolName }
-func (r *GrepRule) Decision() Decision     { return r.decision }
+func (r *GrepRule) ToolName() string { return r.toolName }
 func (r *GrepRule) Match(_ string, input json.RawMessage) *Result {
 	var in GrepInput
 	if err := json.Unmarshal(input, &in); err != nil {

@@ -228,8 +228,7 @@ func globMatch(pattern, s string) bool {
 	return px == len(pattern)
 }
 
-func (r *BashRule) ToolName() string       { return "Bash" }
-func (r *BashRule) Decision() Decision     { return r.decision }
+func (r *BashRule) ToolName() string { return "Bash" }
 func (r *BashRule) Match(_ string, input json.RawMessage) *Result {
 	var in BashInput
 	if err := json.Unmarshal(input, &in); err != nil {

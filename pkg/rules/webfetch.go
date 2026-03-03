@@ -59,8 +59,7 @@ func (r *WebFetchRule) Apply(input WebFetchInput) *Result {
 	return nil
 }
 
-func (r *WebFetchRule) ToolName() string       { return r.toolName }
-func (r *WebFetchRule) Decision() Decision     { return r.decision }
+func (r *WebFetchRule) ToolName() string { return r.toolName }
 func (r *WebFetchRule) Match(_ string, input json.RawMessage) *Result {
 	var in WebFetchInput
 	if err := json.Unmarshal(input, &in); err != nil {

@@ -1,40 +1,33 @@
 package rules
 
-// Harness groups matchers by tool name and decision priority, then evaluates
-// incoming hook events. Evaluation order: deny → ask → allow. First match wins.
+// Harness groups matchers by tool name, then evaluates incoming hook events.
+// All matching rules are applied and the best result wins: highest specificity,
+// then strictest decision (deny > ask > allow), then insertion order.
 // If nothing matches, returns Ask.
 type Harness struct {
-	// byTool maps tool name → decision → list of matchers.
-	byTool map[string]map[Decision][]Matcher
+	// byTool maps tool name → list of matchers.
+	byTool map[string][]Matcher
 	// wildcards are matchers with ToolName()="" (e.g., MCP patterns)
 	// that are checked for every incoming tool.
-	wildcards map[Decision][]Matcher
+	wildcards []Matcher
 }
 
 // NewHarness creates a harness from a list of matchers, grouping them by
-// tool name and decision.
+// tool name.
 func NewHarness(matchers ...Matcher) *Harness {
 	h := &Harness{
-		byTool:    make(map[string]map[Decision][]Matcher),
-		wildcards: make(map[Decision][]Matcher),
+		byTool: make(map[string][]Matcher),
 	}
 	for _, m := range matchers {
 		name := m.ToolName()
-		d := m.Decision()
 		if name == "" {
-			h.wildcards[d] = append(h.wildcards[d], m)
+			h.wildcards = append(h.wildcards, m)
 		} else {
-			if h.byTool[name] == nil {
-				h.byTool[name] = make(map[Decision][]Matcher)
-			}
-			h.byTool[name][d] = append(h.byTool[name][d], m)
+			h.byTool[name] = append(h.byTool[name], m)
 		}
 	}
 	return h
 }
-
-// priority is the evaluation order: deny rules beat ask rules beat allow rules.
-var priority = []Decision{Deny, Ask, Allow}
 
 // decisionRank maps decisions to a numeric rank where lower is stricter.
 // Deny < Ask < Allow, so deny wins ties at equal specificity.
@@ -78,21 +71,15 @@ func pickBest(a, b *Result) *Result {
 // The best match has the highest specificity; ties broken by decision strictness
 // (deny > ask > allow), then by insertion order. Returns Ask if nothing matches.
 func (h *Harness) Evaluate(input HookInput) *Result {
-	toolRules := h.byTool[input.Name]
-
 	var best *Result
-	for _, d := range priority {
-		// Check tool-specific rules
-		for _, m := range toolRules[d] {
-			if result := m.Match(input.Name, input.Input); result != nil {
-				best = pickBest(best, result)
-			}
+	for _, m := range h.byTool[input.Name] {
+		if result := m.Match(input.Name, input.Input); result != nil {
+			best = pickBest(best, result)
 		}
-		// Check wildcard rules (MCP patterns, etc.)
-		for _, m := range h.wildcards[d] {
-			if result := m.Match(input.Name, input.Input); result != nil {
-				best = pickBest(best, result)
-			}
+	}
+	for _, m := range h.wildcards {
+		if result := m.Match(input.Name, input.Input); result != nil {
+			best = pickBest(best, result)
 		}
 	}
 

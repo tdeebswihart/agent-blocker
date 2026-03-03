@@ -38,8 +38,7 @@ func (r *GlobRuleT) Apply(input GlobInput) *Result {
 	return nil
 }
 
-func (r *GlobRuleT) ToolName() string       { return "Glob" }
-func (r *GlobRuleT) Decision() Decision     { return r.decision }
+func (r *GlobRuleT) ToolName() string { return "Glob" }
 func (r *GlobRuleT) Match(_ string, input json.RawMessage) *Result {
 	var in GlobInput
 	if err := json.Unmarshal(input, &in); err != nil {

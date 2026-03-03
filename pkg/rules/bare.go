@@ -14,8 +14,7 @@ func BareTool(decision Decision, toolName string) *BareToolRule {
 	return &BareToolRule{decision: decision, toolName: toolName}
 }
 
-func (r *BareToolRule) ToolName() string   { return r.toolName }
-func (r *BareToolRule) Decision() Decision { return r.decision }
+func (r *BareToolRule) ToolName() string { return r.toolName }
 func (r *BareToolRule) Match(toolName string, _ json.RawMessage) *Result {
 	if toolName == r.toolName {
 		return NewResult(r.decision, "matches all "+r.toolName+" operations")

@@ -36,11 +36,11 @@ type PreToolUseOutput struct {
 	AdditionalContext  string   `json:"additionalContext,omitempty"`
 }
 
-// Matcher is the common interface for all rule types. The harness uses this
-// to group rules by tool name and decision priority.
+// Matcher is the common interface for all rule types. Each matcher knows which
+// tool it applies to and produces a Result (with decision and specificity) when
+// the input matches.
 type Matcher interface {
 	ToolName() string
-	Decision() Decision
 	Match(toolName string, input json.RawMessage) *Result
 }
 

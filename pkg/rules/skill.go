@@ -31,8 +31,7 @@ func (r *SkillRule) Apply(input SkillInput) *Result {
 	return nil
 }
 
-func (r *SkillRule) ToolName() string       { return "Skill" }
-func (r *SkillRule) Decision() Decision     { return r.decision }
+func (r *SkillRule) ToolName() string { return "Skill" }
 func (r *SkillRule) Match(_ string, input json.RawMessage) *Result {
 	var in SkillInput
 	if err := json.Unmarshal(input, &in); err != nil {

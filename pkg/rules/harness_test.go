@@ -157,7 +157,7 @@ func TestHarness_MixedToolTypes(t *testing.T) {
 	}
 }
 
-func TestHarness_FirstMatchWinsWithinPriority(t *testing.T) {
+func TestHarness_InsertionOrderBreaksTies(t *testing.T) {
 	h := NewHarness(
 		Bash(Deny, "rm *"),
 		Bash(Deny, "rm -rf *"),
@@ -170,9 +170,9 @@ func TestHarness_FirstMatchWinsWithinPriority(t *testing.T) {
 	if result.Decision != Deny {
 		t.Fatalf("expected Deny, got %s", result.Decision)
 	}
-	// Both deny rules match, first one wins — check reason
+	// Both deny rules match at equal specificity — first inserted wins
 	if result.Reason != "matched pattern: rm *" {
-		t.Fatalf("expected first deny rule to win, got reason: %s", result.Reason)
+		t.Fatalf("expected first rule to win, got reason: %s", result.Reason)
 	}
 }
 
@@ -228,7 +228,7 @@ func TestHarness_GlobDenyBeatsGlobAllow(t *testing.T) {
 }
 
 func TestHarness_NonPathRulesUnchanged(t *testing.T) {
-	// Non-path rules (Bash) still resolve by priority: deny > allow.
+	// Non-path rules (Bash) at equal specificity: stricter decision wins.
 	h := NewHarness(
 		Bash(Allow, "rm *"),
 		Bash(Deny, "rm -rf *"),
