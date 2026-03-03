@@ -120,6 +120,30 @@ func TestPathMatch_DotSlashPattern(t *testing.T) {
 	}
 }
 
+func TestPathMatcher_Specificity(t *testing.T) {
+	tests := []struct {
+		name    string
+		pattern string
+		want    Specificity
+	}{
+		{"exact file", "./.env", ExactPath},
+		{"exact absolute", "//Users/me/.config/gh/config.yaml", ExactPath},
+		{"glob star", "./.config/gh/**", GlobPath},
+		{"glob question", "./file?.txt", GlobPath},
+		{"glob bracket", "./file[0-9].txt", GlobPath},
+		{"home glob", "~/.ssh/**", GlobPath},
+		{"home exact", "~/.ssh/config", ExactPath},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pm := newPathMatcher("/proj", "/home/me", "/proj", tt.pattern)
+			if got := pm.specificity(); got != tt.want {
+				t.Errorf("specificity(%q) = %d, want %d", tt.pattern, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestPathMatch_RecursiveSecrets(t *testing.T) {
 	pm := newPathMatcher(
 		"/Users/me/project",

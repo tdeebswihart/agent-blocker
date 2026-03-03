@@ -10,9 +10,20 @@ const (
 	Deny  Decision = "deny"
 )
 
+// Specificity ranks how precise a matching rule is. Higher values are more
+// specific and win over lower values when rules conflict.
+type Specificity int
+
+const (
+	Unspecified Specificity = iota // non-path rules, bare match-all
+	GlobPath                       // pattern contains *, ?, or [
+	ExactPath                      // no glob metacharacters
+)
+
 type Result struct {
 	Decision           Decision        `json:"decision"`
 	Reason             string          `json:"reason"`
+	Specificity        Specificity     `json:"-"` // not serialized
 	HookSpecificOutput json.RawMessage `json:"hookSpecificOutput"`
 }
 
@@ -39,6 +50,11 @@ type HookInput struct {
 	Name  string          `json:"tool_name"`
 	CWD   string          `json:"cwd"`
 	Input json.RawMessage `json:"tool_input"`
+}
+
+func (r *Result) WithSpecificity(s Specificity) *Result {
+	r.Specificity = s
+	return r
 }
 
 func NewResult(decision Decision, reason string) *Result {

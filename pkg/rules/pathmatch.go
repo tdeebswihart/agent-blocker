@@ -26,6 +26,13 @@ func newPathMatcher(cwd, home, projectRoot, pattern string) pathMatcher {
 	return pathMatcher{resolved: resolved}
 }
 
+func (pm pathMatcher) specificity() Specificity {
+	if strings.ContainsAny(pm.resolved, "*?[") {
+		return GlobPath
+	}
+	return ExactPath
+}
+
 func (pm pathMatcher) match(filePath string) bool {
 	filePath = filepath.Clean(filePath)
 	matched, _ := doublestar.PathMatch(pm.resolved, filePath)

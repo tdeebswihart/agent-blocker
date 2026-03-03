@@ -31,7 +31,8 @@ func (r *LogMCPRule) Apply(input LogMCPInput) *Result {
 	}
 	for _, m := range r.matchers {
 		if m.match(input.FilePath) {
-			return NewResult(r.decision, "matched path pattern: "+m.resolved)
+			return NewResult(r.decision, "matched path pattern: "+m.resolved).
+				WithSpecificity(m.specificity())
 		}
 	}
 	return nil

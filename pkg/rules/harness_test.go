@@ -176,6 +176,101 @@ func TestHarness_FirstMatchWinsWithinPriority(t *testing.T) {
 	}
 }
 
+func TestHarness_ExactAllowBeatsGlobDeny(t *testing.T) {
+	opts := PathOpts{CWD: "/proj", Home: "/home/me", ProjectRoot: "/proj"}
+	h := NewHarness(
+		Read(Deny, "~/.config/gh/**", opts),
+		Read(Allow, "~/.config/gh/config.yaml", opts),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Read",
+		Input: mustJSON(ReadInput{FilePath: "/home/me/.config/gh/config.yaml"}),
+	})
+	if result.Decision != Allow {
+		t.Fatalf("expected Allow (exact allow beats glob deny), got %s: %s",
+			result.Decision, result.Reason)
+	}
+}
+
+func TestHarness_ExactDenyBeatsExactAllow(t *testing.T) {
+	opts := PathOpts{CWD: "/proj", Home: "/home/me", ProjectRoot: "/proj"}
+	h := NewHarness(
+		Read(Allow, "~/.config/gh/config.yaml", opts),
+		Read(Deny, "~/.config/gh/config.yaml", opts),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Read",
+		Input: mustJSON(ReadInput{FilePath: "/home/me/.config/gh/config.yaml"}),
+	})
+	if result.Decision != Deny {
+		t.Fatalf("expected Deny (exact deny beats exact allow), got %s: %s",
+			result.Decision, result.Reason)
+	}
+}
+
+func TestHarness_GlobDenyBeatsGlobAllow(t *testing.T) {
+	opts := PathOpts{CWD: "/proj", Home: "/home/me", ProjectRoot: "/proj"}
+	h := NewHarness(
+		Read(Allow, "~/.ssh/**", opts),
+		Read(Deny, "~/.ssh/**", opts),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Read",
+		Input: mustJSON(ReadInput{FilePath: "/home/me/.ssh/id_rsa"}),
+	})
+	if result.Decision != Deny {
+		t.Fatalf("expected Deny (glob deny beats glob allow), got %s: %s",
+			result.Decision, result.Reason)
+	}
+}
+
+func TestHarness_NonPathRulesUnchanged(t *testing.T) {
+	// Non-path rules (Bash) still resolve by priority: deny > allow.
+	h := NewHarness(
+		Bash(Allow, "rm *"),
+		Bash(Deny, "rm -rf *"),
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Bash",
+		Input: mustJSON(BashInput{Command: "rm -rf /"}),
+	})
+	if result.Decision != Deny {
+		t.Fatalf("expected Deny for non-path rules, got %s", result.Decision)
+	}
+}
+
+func TestHarness_ExactAllowBeatsUnspecifiedDeny(t *testing.T) {
+	// An exact-path allow should beat a bare (Unspecified) deny-all.
+	opts := PathOpts{CWD: "/proj", Home: "/home/me", ProjectRoot: "/proj"}
+	h := NewHarness(
+		Read(Deny, opts),                             // bare deny-all (Unspecified)
+		Read(Allow, "~/.config/gh/config.yaml", opts), // exact allow
+	)
+
+	result := h.Evaluate(HookInput{
+		Name:  "Read",
+		Input: mustJSON(ReadInput{FilePath: "/home/me/.config/gh/config.yaml"}),
+	})
+	if result.Decision != Allow {
+		t.Fatalf("expected Allow (exact beats unspecified), got %s: %s",
+			result.Decision, result.Reason)
+	}
+
+	// A file not covered by the exact allow should still be denied.
+	result = h.Evaluate(HookInput{
+		Name:  "Read",
+		Input: mustJSON(ReadInput{FilePath: "/home/me/.config/gh/hosts.yml"}),
+	})
+	if result.Decision != Deny {
+		t.Fatalf("expected Deny for non-matching file, got %s: %s",
+			result.Decision, result.Reason)
+	}
+}
+
 func TestHarness_LogMCPSpecificTool(t *testing.T) {
 	opts := PathOpts{CWD: "/proj", Home: "/home/me", ProjectRoot: "/proj"}
 	h := NewHarness(

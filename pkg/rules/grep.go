@@ -47,7 +47,8 @@ func (r *GrepRule) Apply(input GrepInput) *Result {
 	}
 	for _, m := range r.matchers {
 		if m.match(input.Path) {
-			return NewResult(r.decision, "matched path pattern: "+m.resolved)
+			return NewResult(r.decision, "matched path pattern: "+m.resolved).
+				WithSpecificity(m.specificity())
 		}
 	}
 	return nil
