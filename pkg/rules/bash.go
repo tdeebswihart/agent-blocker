@@ -70,6 +70,10 @@ func isWordChar(c byte) bool {
 // safety: if the command contains shell operators (&&, ||, ;, |) but the
 // pattern does not, the match fails.
 func bashMatch(pattern, command string) bool {
+	// Strip known safe suffixes before any checks — the exit-code echo
+	// contains a semicolon that would otherwise trigger operator rejection.
+	command = stripExitCodeSuffix(command)
+
 	patternOps := hasShellOperators(pattern)
 	commandOps := hasShellOperators(command)
 
@@ -160,6 +164,19 @@ func containsAnyOperator(s string) bool {
 		}
 	}
 	return false
+}
+
+// stripExitCodeSuffix removes a trailing `; echo "Exit code: $?"` from a
+// command string. Some tools append this suffix to capture the exit code;
+// it is not part of the actual command being authorized.
+func stripExitCodeSuffix(command string) string {
+	const suffix = `; echo "Exit code: $?"`
+	if s, ok := strings.CutSuffix(strings.TrimSpace(command), suffix); ok {
+		if trimmed := strings.TrimSpace(s); trimmed != "" {
+			return trimmed
+		}
+	}
+	return command
 }
 
 // stripTimeoutPrefix removes a leading `timeout [flags] <duration>` from a

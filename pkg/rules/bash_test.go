@@ -233,6 +233,53 @@ func TestBashRule_TimeoutPrefix(t *testing.T) {
 	}
 }
 
+func TestBashRule_ExitCodeSuffix(t *testing.T) {
+	exact := Bash(Allow, "make lint")
+	wildcard := Bash(Allow, "go test *")
+
+	// Suffix is stripped — exact pattern matches.
+	if result := exact.Apply(BashInput{
+		Command: `make lint; echo "Exit code: $?"`,
+	}); result == nil {
+		t.Fatal("expected match for exact command with exit-code suffix")
+	}
+
+	// Suffix is stripped — wildcard pattern matches.
+	if result := wildcard.Apply(BashInput{
+		Command: `go test ./...; echo "Exit code: $?"`,
+	}); result == nil {
+		t.Fatal("expected match for wildcard command with exit-code suffix")
+	}
+
+	// Combined with timeout stripping.
+	if result := wildcard.Apply(BashInput{
+		Command: `timeout 5m go test ./...; echo "Exit code: $?"`,
+	}); result == nil {
+		t.Fatal("expected match for timeout + exit-code suffix")
+	}
+
+	// Combined with redirect stripping.
+	if result := exact.Apply(BashInput{
+		Command: `make lint > /tmp/out.log; echo "Exit code: $?"`,
+	}); result == nil {
+		t.Fatal("expected match for redirect + exit-code suffix")
+	}
+
+	// Suffix alone (no real command) — should NOT match.
+	if result := exact.Apply(BashInput{
+		Command: `echo "Exit code: $?"`,
+	}); result != nil {
+		t.Fatal("expected no match for exit-code echo alone")
+	}
+
+	// Real shell chaining should still be blocked.
+	if result := exact.Apply(BashInput{
+		Command: `make lint && rm -rf /; echo "Exit code: $?"`,
+	}); result != nil {
+		t.Fatal("expected no match — shell operators should still be caught after suffix strip")
+	}
+}
+
 func TestStripRedirects(t *testing.T) {
 	tests := []struct {
 		name    string
