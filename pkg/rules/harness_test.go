@@ -478,6 +478,39 @@ func TestHarness_CompoundBashXargs(t *testing.T) {
 	}
 }
 
+func TestHarness_CompoundBashCDWithAbsolutePath(t *testing.T) {
+	h := NewHarness(
+		BashCD("/Users/tim/git/project"),
+		Bash(Allow, "go test *"),
+	)
+
+	// cd to absolute path within project root + go test should both be allowed.
+	result := h.Evaluate(HookInput{
+		Name: "Bash",
+		Input: mustJSON(BashInput{
+			Command: "cd /Users/tim/git/project/subdir && go test ./...",
+		}),
+	})
+	if result.HookSpecificOutput.PermissionDecision != Allow {
+		t.Fatalf("expected Allow for cd (abs within project) && go test, got %s (%s)",
+			result.HookSpecificOutput.PermissionDecision,
+			result.HookSpecificOutput.PermissionDecisionReason)
+	}
+
+	// cd to absolute path outside project root should cause Ask.
+	result = h.Evaluate(HookInput{
+		Name: "Bash",
+		Input: mustJSON(BashInput{
+			Command: "cd /etc && go test ./...",
+		}),
+	})
+	if result.HookSpecificOutput.PermissionDecision != Ask {
+		t.Fatalf("expected Ask for cd (abs outside project) && go test, got %s (%s)",
+			result.HookSpecificOutput.PermissionDecision,
+			result.HookSpecificOutput.PermissionDecisionReason)
+	}
+}
+
 func TestHarness_CompoundBashSingleCommand(t *testing.T) {
 	h := NewHarness(
 		Bash(Allow, "go test *"),
