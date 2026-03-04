@@ -110,8 +110,7 @@ func DefaultRules(cwd string) []Matcher {
 
 		// Shell utilities
 		BashGrep(),
-		Bash(Allow, "fd:*"),
-		Bash(Allow, "find:*"),
+		BashFind(),
 		Bash(Allow, "fastmod:*"),
 		Bash(Allow, "sed:*"),
 		Bash(Allow, "ls:*"),
