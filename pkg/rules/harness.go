@@ -143,6 +143,7 @@ func (h *Harness) evaluateBashCompound(input HookInput) *Result[PreToolUseOutput
 	}
 
 	if combined == nil {
+		// always ask for unmatched bash commands
 		return NewResult(Ask, "no matching rule")
 	}
 	return combined

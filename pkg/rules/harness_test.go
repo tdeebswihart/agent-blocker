@@ -422,6 +422,27 @@ func TestHarness_CompoundBashTimeout(t *testing.T) {
 	}
 }
 
+func TestHarness_CompoundBashSemanticMatchers(t *testing.T) {
+	h := NewHarness(
+		Bash(Allow, "jj file show *"),
+		BashGrep(),
+		BashEcho(),
+	)
+
+	// All three sub-commands match rules: jj file show, grep, echo.
+	result := h.Evaluate(HookInput{
+		Name: "Bash",
+		Input: mustJSON(BashInput{
+			Command: `jj file show foo -r 'trunk()' 2>/dev/null | grep "TestStorage" || echo "not found"`,
+		}),
+	})
+	if result.HookSpecificOutput.PermissionDecision != Allow {
+		t.Fatalf("expected Allow for compound with semantic matchers, got %s (%s)",
+			result.HookSpecificOutput.PermissionDecision,
+			result.HookSpecificOutput.PermissionDecisionReason)
+	}
+}
+
 func TestHarness_CompoundBashSingleCommand(t *testing.T) {
 	h := NewHarness(
 		Bash(Allow, "go test *"),

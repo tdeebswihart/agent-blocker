@@ -109,8 +109,7 @@ func DefaultRules(cwd string) []Matcher {
 		Read(Allow, "~/go/pkg/mod/**/*.go", opts),
 
 		// Shell utilities
-		Bash(Allow, "rg:*"),
-		Bash(Allow, "grep:*"),
+		BashGrep(),
 		Bash(Allow, "fd:*"),
 		Bash(Allow, "find:*"),
 		Bash(Allow, "fastmod:*"),
@@ -119,7 +118,8 @@ func DefaultRules(cwd string) []Matcher {
 		Bash(Allow, "cut:*"),
 		Bash(Allow, "cat:*"),
 		Bash(Allow, "wc:*"),
-		Bash(Allow, "head:*"),
+		BashEcho(),
+		BashHeadTail(),
 		Bash(Allow, "jq:*"),
 		Bash(Allow, "yq:*"),
 
