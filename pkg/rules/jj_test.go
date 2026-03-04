@@ -113,8 +113,8 @@ func TestJJEditEmptyRule_AllowsEmpty(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected result for jj edit command")
 	}
-	if result.Decision != Allow {
-		t.Fatalf("expected Allow for empty revision, got %s", result.Decision)
+	if result.decision != Allow {
+		t.Fatalf("expected Allow for empty revision, got %s", result.decision)
 	}
 }
 
@@ -127,8 +127,8 @@ func TestJJEditEmptyRule_DeniesNonEmpty(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected result for jj edit command")
 	}
-	if result.Decision != Deny {
-		t.Fatalf("expected Deny for non-empty revision, got %s", result.Decision)
+	if result.decision != Deny {
+		t.Fatalf("expected Deny for non-empty revision, got %s", result.decision)
 	}
 }
 
@@ -164,8 +164,8 @@ func TestJJAbandonEmptyRule_AllowsAllEmpty(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected result for jj abandon command")
 	}
-	if result.Decision != Allow {
-		t.Fatalf("expected Allow when all revisions empty, got %s", result.Decision)
+	if result.decision != Allow {
+		t.Fatalf("expected Allow when all revisions empty, got %s", result.decision)
 	}
 }
 
@@ -178,8 +178,8 @@ func TestJJAbandonEmptyRule_DeniesAnyNonEmpty(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected result for jj abandon command")
 	}
-	if result.Decision != Deny {
-		t.Fatalf("expected Deny when any revision non-empty, got %s", result.Decision)
+	if result.decision != Deny {
+		t.Fatalf("expected Deny when any revision non-empty, got %s", result.decision)
 	}
 }
 

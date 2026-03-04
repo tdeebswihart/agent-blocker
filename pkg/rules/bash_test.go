@@ -7,8 +7,8 @@ func TestBashRule_ExactMatch(t *testing.T) {
 
 	if result := rule.Apply(BashInput{Command: "make lint"}); result == nil {
 		t.Fatal("expected match for exact command")
-	} else if result.Decision != Allow {
-		t.Fatalf("expected Allow, got %s", result.Decision)
+	} else if result.decision != Allow {
+		t.Fatalf("expected Allow, got %s", result.decision)
 	}
 
 	if result := rule.Apply(BashInput{Command: "make test"}); result != nil {
@@ -165,8 +165,8 @@ func TestBashRule_DenyDecision(t *testing.T) {
 
 	if result := rule.Apply(BashInput{Command: "rm -rf /"}); result == nil {
 		t.Fatal("expected match")
-	} else if result.Decision != Deny {
-		t.Fatalf("expected Deny, got %s", result.Decision)
+	} else if result.decision != Deny {
+		t.Fatalf("expected Deny, got %s", result.decision)
 	}
 }
 
@@ -194,8 +194,8 @@ func TestBashRule_TimeoutPrefix(t *testing.T) {
 	}
 	if result := deny.Apply(BashInput{Command: "timeout 30s rm -rf /"}); result == nil {
 		t.Fatal("expected match for 'timeout 30s rm -rf /'")
-	} else if result.Decision != Deny {
-		t.Fatalf("expected Deny, got %s", result.Decision)
+	} else if result.decision != Deny {
+		t.Fatalf("expected Deny, got %s", result.decision)
 	}
 
 	// With flags: -k (kill-after) takes a separate argument

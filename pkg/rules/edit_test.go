@@ -9,8 +9,8 @@ func TestEditRule_DenyHomeRC(t *testing.T) {
 
 	if result := rule.Apply(EditInput{FilePath: "/Users/me/.bashrc"}); result == nil {
 		t.Fatal("expected match for .bashrc")
-	} else if result.Decision != Deny {
-		t.Fatalf("expected Deny, got %s", result.Decision)
+	} else if result.decision != Deny {
+		t.Fatalf("expected Deny, got %s", result.decision)
 	}
 
 	if result := rule.Apply(EditInput{FilePath: "/Users/me/.ssh/config"}); result == nil {

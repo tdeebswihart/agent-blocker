@@ -7,8 +7,8 @@ func TestAgentRule_ExactMatch(t *testing.T) {
 
 	if result := rule.Apply(AgentInput{SubagentType: "Explore"}); result == nil {
 		t.Fatal("expected match for Explore")
-	} else if result.Decision != Deny {
-		t.Fatalf("expected Deny, got %s", result.Decision)
+	} else if result.decision != Deny {
+		t.Fatalf("expected Deny, got %s", result.decision)
 	}
 
 	if result := rule.Apply(AgentInput{SubagentType: "Plan"}); result != nil {

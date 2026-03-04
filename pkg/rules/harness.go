@@ -63,7 +63,7 @@ func pickBest(a, b *Result) *Result {
 		return a
 	}
 	// Equal specificity: lower decision rank (stricter) wins.
-	if decisionRank(b.Decision) < decisionRank(a.Decision) {
+	if decisionRank(b.decision) < decisionRank(a.decision) {
 		return b
 	}
 	return a
@@ -95,7 +95,7 @@ func pickMostRestrictive(a, b *Result) *Result {
 	if b == nil {
 		return a
 	}
-	if decisionRank(a.Decision) <= decisionRank(b.Decision) {
+	if decisionRank(a.decision) <= decisionRank(b.decision) {
 		return a
 	}
 	return b

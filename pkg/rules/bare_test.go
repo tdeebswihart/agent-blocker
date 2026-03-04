@@ -7,8 +7,8 @@ func TestBareToolRule_MatchesAll(t *testing.T) {
 
 	if result := rule.Match("Search", nil); result == nil {
 		t.Fatal("expected match for Search")
-	} else if result.Decision != Allow {
-		t.Fatalf("expected Allow, got %s", result.Decision)
+	} else if result.decision != Allow {
+		t.Fatalf("expected Allow, got %s", result.decision)
 	}
 }
 
@@ -17,10 +17,10 @@ func TestBareToolRule_ToolName(t *testing.T) {
 	if rule.ToolName() != "WebSearch" {
 		t.Fatalf("expected WebSearch, got %s", rule.ToolName())
 	}
-	// Decision is embedded in the result, not on the rule
+	// decision is embedded in the result, not on the rule
 	if result := rule.Match("WebSearch", nil); result == nil {
 		t.Fatal("expected match")
-	} else if result.Decision != Ask {
-		t.Fatalf("expected Ask, got %s", result.Decision)
+	} else if result.decision != Ask {
+		t.Fatalf("expected Ask, got %s", result.decision)
 	}
 }

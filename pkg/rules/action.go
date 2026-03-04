@@ -21,9 +21,13 @@ const (
 )
 
 type Result struct {
-	Decision           Decision        `json:"decision"`
-	Reason             string          `json:"reason"`
-	Specificity        Specificity     `json:"-"` // not serialized
+	// decision and reason are internal — Claude Code reads these from
+	// hookSpecificOutput.PermissionDecision/PermissionDecisionReason.
+	decision    Decision
+	reason      string
+	Continue    bool            `json:"continue"`
+	StopReason  string          `json:"stopReason,omitempty"`
+	Specificity Specificity     `json:"-"`
 	HookSpecificOutput json.RawMessage `json:"hookSpecificOutput"`
 }
 
@@ -66,8 +70,9 @@ func NewResult(decision Decision, reason string) *Result {
 	}
 	raw, _ := json.Marshal(output)
 	return &Result{
-		Decision:           decision,
-		Reason:             reason,
+		decision:           decision,
+		reason:             reason,
+		Continue:           true,
 		HookSpecificOutput: raw,
 	}
 }
