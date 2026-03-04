@@ -162,7 +162,9 @@ func DefaultRules(cwd string) []Matcher {
 		Bash(Allow, "go mod:*"),
 		Bash(Allow, "go list:*"),
 		Bash(Allow, "go doc:*"),
+		Bash(Allow, "go vet:*"),
 		Bash(Allow, "go generate:*"),
+		Bash(Allow, "golangci-lint:*"),
 		Read(Allow, "~/go/pkg/mod/**", opts),
 
 		// Web
