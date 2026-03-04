@@ -28,13 +28,7 @@ func (r *BashGrepRule) Match(_ string, input json.RawMessage) *Result[PreToolUse
 }
 
 func (r *BashGrepRule) Apply(input BashInput) *Result[PreToolUseOutput] {
-	cmd := input.Command
-	if stripped, ok := stripTimeoutPrefix(cmd); ok {
-		cmd = stripped
-	}
-	if stripped, ok := stripRedirects(cmd); ok {
-		cmd = stripped
-	}
+	cmd := unwrapCommand(input.Command)
 
 	tokens, err := shellwords.Split(cmd)
 	if err != nil || len(tokens) == 0 {

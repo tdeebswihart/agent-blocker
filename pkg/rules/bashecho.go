@@ -25,14 +25,7 @@ func (r *BashEchoRule) Match(_ string, input json.RawMessage) *Result[PreToolUse
 }
 
 func (r *BashEchoRule) Apply(input BashInput) *Result[PreToolUseOutput] {
-	cmd := input.Command
-	if stripped, ok := stripTimeoutPrefix(cmd); ok {
-		cmd = stripped
-	}
-	if stripped, ok := stripRedirects(cmd); ok {
-		cmd = stripped
-	}
-	cmd = strings.TrimSpace(cmd)
+	cmd := strings.TrimSpace(unwrapCommand(input.Command))
 
 	if !strings.HasPrefix(cmd, "echo ") && cmd != "echo" {
 		return nil

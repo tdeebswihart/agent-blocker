@@ -95,6 +95,10 @@ func bashMatch(pattern, command string) bool {
 	if stripped, ok := stripTimeoutPrefix(command); ok {
 		return bashMatch(pattern, stripped)
 	}
+	// See through an `xargs` wrapper to match the underlying command.
+	if stripped, ok := stripXargsPrefix(command); ok {
+		return bashMatch(pattern, stripped)
+	}
 	// See through output redirects to safe locations (current dir or /tmp/).
 	if stripped, ok := stripRedirects(command); ok {
 		return bashMatch(pattern, stripped)
@@ -193,6 +197,92 @@ func stripTimeoutPrefix(command string) (string, bool) {
 		return "", false
 	}
 	s = strings.TrimSpace(s[end:])
+	if s == "" {
+		return "", false
+	}
+	return s, true
+}
+
+// unwrapCommand strips known safe wrappers (timeout, xargs) and output
+// redirects from a command string, returning the underlying command. Wrappers
+// are stripped in a loop so that any nesting order (e.g., timeout wrapping
+// xargs or vice versa) is handled.
+func unwrapCommand(cmd string) string {
+	for {
+		if stripped, ok := stripTimeoutPrefix(cmd); ok {
+			cmd = stripped
+			continue
+		}
+		if stripped, ok := stripXargsPrefix(cmd); ok {
+			cmd = stripped
+			continue
+		}
+		break
+	}
+	if stripped, ok := stripRedirects(cmd); ok {
+		cmd = stripped
+	}
+	return cmd
+}
+
+// stripXargsPrefix removes a leading `xargs [flags]` from a command string,
+// returning the actual command that follows. Returns ("", false) if the command
+// doesn't start with "xargs " or has no command after the flags.
+func stripXargsPrefix(command string) (string, bool) {
+	s := strings.TrimSpace(command)
+	if !strings.HasPrefix(s, "xargs ") {
+		return "", false
+	}
+	s = strings.TrimSpace(s[len("xargs"):])
+
+	// Short flags that take a separate argument.
+	argFlags := map[byte]bool{
+		'I': true, 'd': true, 'L': true, 'n': true,
+		'P': true, 's': true, 'E': true,
+	}
+	// Long flags that take a separate argument (when written without =).
+	longArgFlags := map[string]bool{
+		"--replace": true, "--delimiter": true, "--max-lines": true,
+		"--max-args": true, "--max-procs": true, "--max-chars": true,
+		"--eof": true,
+	}
+
+	for strings.HasPrefix(s, "-") {
+		end := strings.IndexByte(s, ' ')
+		if end == -1 {
+			return "", false // flag with no command following
+		}
+		flag := s[:end]
+		s = strings.TrimSpace(s[end:])
+
+		if strings.HasPrefix(flag, "--") {
+			// Long flag with = is self-contained (e.g., --max-procs=4).
+			if strings.Contains(flag, "=") {
+				continue
+			}
+			// Long flag needing a separate argument.
+			if longArgFlags[flag] {
+				end = strings.IndexByte(s, ' ')
+				if end == -1 {
+					return "", false
+				}
+				s = strings.TrimSpace(s[end:])
+			}
+			continue
+		}
+
+		// Short flags: could be combined (e.g., -0rt). The last char
+		// determines whether the next token is consumed as an argument.
+		last := flag[len(flag)-1]
+		if argFlags[last] {
+			end = strings.IndexByte(s, ' ')
+			if end == -1 {
+				return "", false
+			}
+			s = strings.TrimSpace(s[end:])
+		}
+	}
+
 	if s == "" {
 		return "", false
 	}

@@ -233,6 +233,76 @@ func TestBashRule_TimeoutPrefix(t *testing.T) {
 	}
 }
 
+func TestBashRule_XargsPrefix(t *testing.T) {
+	allow := Bash(Allow, "grep *")
+	deny := Bash(Deny, "rm -rf *")
+
+	// Basic xargs prefix — should see through to actual command
+	if result := allow.Apply(BashInput{Command: "xargs grep foo"}); result == nil {
+		t.Fatal("expected match for 'xargs grep foo'")
+	}
+	if result := deny.Apply(BashInput{Command: "xargs rm -rf /"}); result == nil {
+		t.Fatal("expected match for 'xargs rm -rf /'")
+	} else if result.HookSpecificOutput.PermissionDecision != Deny {
+		t.Fatalf("expected Deny, got %s", result.HookSpecificOutput.PermissionDecision)
+	}
+
+	// With flags
+	if result := allow.Apply(BashInput{Command: "xargs -n 1 grep foo"}); result == nil {
+		t.Fatal("expected match with -n flag")
+	}
+	if result := allow.Apply(BashInput{Command: "xargs -0 -P 4 grep foo"}); result == nil {
+		t.Fatal("expected match with multiple flags")
+	}
+
+	// Combined with timeout: timeout wraps xargs
+	if result := allow.Apply(
+		BashInput{Command: "timeout 5m xargs grep foo"},
+	); result == nil {
+		t.Fatal("expected match with timeout + xargs")
+	}
+
+	// Combined with timeout: xargs wraps timeout (unusual but valid)
+	if result := allow.Apply(
+		BashInput{Command: "xargs timeout 5m grep foo"},
+	); result == nil {
+		t.Fatal("expected match with xargs + timeout")
+	}
+
+	// No command after xargs — should NOT match
+	if result := allow.Apply(BashInput{Command: "xargs -n 1"}); result != nil {
+		t.Fatal("expected no match for xargs with no command")
+	}
+}
+
+func TestBashGrep_XargsPrefix(t *testing.T) {
+	rule := BashGrep()
+
+	// BashGrepRule should see through xargs to match the underlying grep.
+	if result := rule.Apply(BashInput{Command: "xargs grep foo"}); result == nil {
+		t.Fatal("expected BashGrepRule to match 'xargs grep foo'")
+	}
+	if result := rule.Apply(BashInput{Command: "xargs -0 grep -r pattern ."}); result == nil {
+		t.Fatal("expected BashGrepRule to match 'xargs -0 grep -r pattern .'")
+	}
+}
+
+func TestBashEcho_XargsPrefix(t *testing.T) {
+	rule := BashEcho()
+
+	if result := rule.Apply(BashInput{Command: "xargs echo hello"}); result == nil {
+		t.Fatal("expected BashEchoRule to match 'xargs echo hello'")
+	}
+}
+
+func TestBashHeadTail_XargsPrefix(t *testing.T) {
+	rule := BashHeadTail()
+
+	if result := rule.Apply(BashInput{Command: "xargs head -n 5"}); result == nil {
+		t.Fatal("expected BashHeadTailRule to match 'xargs head -n 5'")
+	}
+}
+
 func TestBashRule_ExitCodeSuffix(t *testing.T) {
 	exact := Bash(Allow, "make lint")
 	wildcard := Bash(Allow, "go test *")
@@ -417,6 +487,57 @@ func TestSplitCompoundCommand(t *testing.T) {
 						tt.command, i, got[i], tt.want[i],
 					)
 				}
+			}
+		})
+	}
+}
+
+func TestStripXargsPrefix(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		want    string
+		wantOK  bool
+	}{
+		{"basic", "xargs grep foo", "grep foo", true},
+		{"no-arg flag -0", "xargs -0 grep foo", "grep foo", true},
+		{"no-arg flag -r", "xargs -r grep foo", "grep foo", true},
+		{"no-arg flag -t", "xargs -t grep foo", "grep foo", true},
+		{"no-arg flag -p", "xargs -p grep foo", "grep foo", true},
+		{"no-arg flag -x", "xargs -x grep foo", "grep foo", true},
+		{"arg flag -I", "xargs -I {} grep {} file", "grep {} file", true},
+		{"arg flag -d", "xargs -d '\\n' grep foo", "grep foo", true},
+		{"arg flag -n", "xargs -n 1 grep foo", "grep foo", true},
+		{"arg flag -P", "xargs -P 4 grep foo", "grep foo", true},
+		{"arg flag -L", "xargs -L 1 grep foo", "grep foo", true},
+		{"arg flag -s", "xargs -s 255 grep foo", "grep foo", true},
+		{"arg flag -E", "xargs -E EOF grep foo", "grep foo", true},
+		{"long flag --null", "xargs --null grep foo", "grep foo", true},
+		{"long flag with =", "xargs --max-procs=4 grep foo", "grep foo", true},
+		{
+			"long flag with separate arg",
+			"xargs --max-args 5 grep foo",
+			"grep foo",
+			true,
+		},
+		{"multiple flags", "xargs -0 -n 1 -P 4 grep foo", "grep foo", true},
+		{"combined no-arg flags", "xargs -0rt grep foo", "grep foo", true},
+
+		{"not xargs", "grep foo", "", false},
+		{"bare xargs", "xargs", "", false},
+		{"xargs with flags only", "xargs -0 -r", "", false},
+		{"xargs -n with no command", "xargs -n 1", "", false},
+		{"xargs flag missing arg", "xargs -I", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := stripXargsPrefix(tt.command)
+			if ok != tt.wantOK {
+				t.Fatalf("stripXargsPrefix(%q): ok = %v, want %v", tt.command, ok, tt.wantOK)
+			}
+			if got != tt.want {
+				t.Fatalf("stripXargsPrefix(%q) = %q, want %q", tt.command, got, tt.want)
 			}
 		})
 	}

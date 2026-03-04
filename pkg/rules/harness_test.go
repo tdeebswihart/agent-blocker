@@ -443,6 +443,41 @@ func TestHarness_CompoundBashSemanticMatchers(t *testing.T) {
 	}
 }
 
+func TestHarness_CompoundBashXargs(t *testing.T) {
+	h := NewHarness(
+		Bash(Allow, "find *"),
+		BashGrep(),
+		Bash(Allow, "wc *"),
+		Bash(Deny, "rm -rf *"),
+	)
+
+	// All sub-commands allowed: find, grep (via BashGrep semantic matcher), wc.
+	result := h.Evaluate(HookInput{
+		Name: "Bash",
+		Input: mustJSON(BashInput{
+			Command: `find . -name "*.go" | xargs grep "foo" | wc -l`,
+		}),
+	})
+	if result.HookSpecificOutput.PermissionDecision != Allow {
+		t.Fatalf("expected Allow for find|xargs grep|wc, got %s (%s)",
+			result.HookSpecificOutput.PermissionDecision,
+			result.HookSpecificOutput.PermissionDecisionReason)
+	}
+
+	// One sub-command denied: xargs wrapping rm -rf.
+	result = h.Evaluate(HookInput{
+		Name: "Bash",
+		Input: mustJSON(BashInput{
+			Command: `find . | xargs rm -rf`,
+		}),
+	})
+	if result.HookSpecificOutput.PermissionDecision != Deny {
+		t.Fatalf("expected Deny for find|xargs rm -rf, got %s (%s)",
+			result.HookSpecificOutput.PermissionDecision,
+			result.HookSpecificOutput.PermissionDecisionReason)
+	}
+}
+
 func TestHarness_CompoundBashSingleCommand(t *testing.T) {
 	h := NewHarness(
 		Bash(Allow, "go test *"),
