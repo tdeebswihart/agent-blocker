@@ -48,10 +48,11 @@ type Matcher interface {
 
 // HookInput is the JSON structure received from Claude Code's PreToolUse hook.
 type HookInput struct {
-	Event string          `json:"hook_event_name"`
-	Name  string          `json:"tool_name"`
-	CWD   string          `json:"cwd"`
-	Input json.RawMessage `json:"tool_input"`
+	SessionID string          `json:"session_id"`
+	Event     string          `json:"hook_event_name"`
+	Name      string          `json:"tool_name"`
+	CWD       string          `json:"cwd"`
+	Input     json.RawMessage `json:"tool_input"`
 }
 
 func (r *Result[T]) WithSpecificity(s Specificity) *Result[T] {

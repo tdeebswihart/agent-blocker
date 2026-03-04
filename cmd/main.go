@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"codeberg.org/timods/agent-blocker/pkg/logging"
 	"codeberg.org/timods/agent-blocker/pkg/rules"
 )
 
@@ -73,6 +74,7 @@ func main() {
 
 	harness := rules.NewHarness(rules.DefaultRules(hook.CWD)...)
 	result := harness.Evaluate(hook)
+	logging.LogInvocation(hook, result)
 	if result == nil {
 		return
 	}
