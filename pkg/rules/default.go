@@ -120,6 +120,7 @@ func DefaultRules(cwd string) []Matcher {
 		Bash(Allow, "wc:*"),
 		BashEcho(),
 		BashHeadTail(),
+		Mkdir(),
 		Bash(Allow, "jq:*"),
 		Bash(Allow, "yq:*"),
 
