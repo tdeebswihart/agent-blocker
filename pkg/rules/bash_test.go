@@ -233,6 +233,90 @@ func TestBashRule_TimeoutPrefix(t *testing.T) {
 	}
 }
 
+func TestStripRedirects(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		want    string
+		wantOK  bool
+	}{
+		{"stdout to file", "make lint > out.log", "make lint", true},
+		{"stdout append", "make lint >> out.log", "make lint", true},
+		{"stderr to file", "make lint 2> err.log", "make lint", true},
+		{"stderr append", "make lint 2>> err.log", "make lint", true},
+		{"fd dup", "make lint 2>&1", "make lint", true},
+		{"combined stdout and fd dup", "make lint > out.log 2>&1", "make lint", true},
+		{"to /tmp", "make lint > /tmp/out.log", "make lint", true},
+		{"&> redirect", "make lint &> /tmp/all.log", "make lint", true},
+		{"&>> redirect", "make lint &>> out.log", "make lint", true},
+		{"no-space target", "make lint >out.log", "make lint", true},
+		{"subdirectory target", "make lint > build/out.log", "make lint", true},
+		{"redirect at start", "> out.log make lint", "make lint", true},
+
+		{"no redirect", "make lint", "", false},
+		{"unsafe absolute path", "make lint > /etc/passwd", "", false},
+		{"unsafe dotdot", "make lint > ../out.log", "", false},
+		{"unsafe nested dotdot", "make lint > foo/../../out.log", "", false},
+		{"unsafe cleaned dotdot", "make lint > a/b/../../..", "", false},
+		{"safe cleaned path", "make lint > a/b/../c/out.log", "make lint", true},
+		{"safe /tmp with dotdot", "make lint > /tmp/a/../out.log", "make lint", true},
+		{"only redirect", "> /tmp/out.log", "", false},
+		{"quoted redirect not stripped", "echo '> /tmp/foo' hello", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := stripRedirects(tt.command)
+			if ok != tt.wantOK {
+				t.Fatalf("stripRedirects(%q): ok = %v, want %v", tt.command, ok, tt.wantOK)
+			}
+			if got != tt.want {
+				t.Fatalf("stripRedirects(%q) = %q, want %q", tt.command, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBashRule_RedirectStripping(t *testing.T) {
+	exact := Bash(Allow, "make lint")
+
+	// Exact pattern matches after stripping safe redirects.
+	if result := exact.Apply(BashInput{Command: "make lint > out.log"}); result == nil {
+		t.Fatal("expected match for 'make lint > out.log'")
+	}
+	if result := exact.Apply(BashInput{Command: "make lint > /tmp/out.log"}); result == nil {
+		t.Fatal("expected match for 'make lint > /tmp/out.log'")
+	}
+	if result := exact.Apply(BashInput{Command: "make lint 2>&1 > out.log"}); result == nil {
+		t.Fatal("expected match for 'make lint 2>&1 > out.log'")
+	}
+	if result := exact.Apply(BashInput{Command: "make lint &> /tmp/all.log"}); result == nil {
+		t.Fatal("expected match for 'make lint &> /tmp/all.log'")
+	}
+
+	// Unsafe redirect target — no stripping, no match.
+	if result := exact.Apply(BashInput{Command: "make lint > /etc/passwd"}); result != nil {
+		t.Fatal("expected no match for unsafe redirect target /etc/passwd")
+	}
+	if result := exact.Apply(BashInput{Command: "make lint > ../out.log"}); result != nil {
+		t.Fatal("expected no match for unsafe redirect target ../out.log")
+	}
+
+	// Combined with timeout stripping.
+	if result := exact.Apply(
+		BashInput{Command: "timeout 5m make lint > /tmp/out.log"},
+	); result == nil {
+		t.Fatal("expected match for timeout + redirect")
+	}
+
+	// Shell operators still block even with redirects present.
+	if result := exact.Apply(
+		BashInput{Command: "make lint > /tmp/out.log && rm -rf /"},
+	); result != nil {
+		t.Fatal("expected no match — shell operators should still be caught")
+	}
+}
+
 func TestBashRule_MiddleWildcard(t *testing.T) {
 	rule := Bash(Allow, "git * main")
 

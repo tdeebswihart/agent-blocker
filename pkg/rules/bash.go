@@ -2,6 +2,7 @@ package rules
 
 import (
 	"encoding/json"
+	"path"
 	"strings"
 
 	"github.com/buildkite/shellwords"
@@ -88,6 +89,10 @@ func bashMatch(pattern, command string) bool {
 	}
 	// See through a `timeout` wrapper to match the underlying command.
 	if stripped, ok := stripTimeoutPrefix(command); ok {
+		return bashMatch(pattern, stripped)
+	}
+	// See through output redirects to safe locations (current dir or /tmp/).
+	if stripped, ok := stripRedirects(command); ok {
 		return bashMatch(pattern, stripped)
 	}
 	return false
@@ -197,6 +202,152 @@ func stripTimeoutPrefix(command string) (string, bool) {
 		return "", false
 	}
 	return s, true
+}
+
+// stripRedirects removes output redirect operators and their targets from a
+// command, returning the underlying command. Only redirects to safe locations
+// (relative paths without ".." or absolute paths under /tmp/) are stripped.
+// Fd dups like 2>&1 are always stripped. Returns ("", false) if no redirects
+// are found or any redirect target is unsafe.
+func stripRedirects(command string) (string, bool) {
+	var buf strings.Builder
+	found := false
+	i := 0
+	n := len(command)
+
+	for i < n {
+		ch := command[i]
+
+		// Preserve quoted regions as-is.
+		if ch == '\'' || ch == '"' {
+			j := i + 1
+			for j < n && command[j] != ch {
+				j++
+			}
+			if j < n {
+				j++ // include closing quote
+			}
+			buf.WriteString(command[i:j])
+			i = j
+			continue
+		}
+
+		// A redirect operator must be preceded by whitespace or be at position 0.
+		if i > 0 && command[i-1] != ' ' && command[i-1] != '\t' {
+			buf.WriteByte(ch)
+			i++
+			continue
+		}
+
+		// Quick check: redirect must start with digit, &, or >.
+		if ch != '>' && !(ch >= '0' && ch <= '9') && ch != '&' {
+			buf.WriteByte(ch)
+			i++
+			continue
+		}
+
+		if consumed, target, ok := consumeRedirect(command, i); ok {
+			if target != "" && !isSafeRedirectTarget(target) {
+				return "", false
+			}
+			found = true
+			i = consumed
+			continue
+		}
+
+		buf.WriteByte(ch)
+		i++
+	}
+
+	if !found {
+		return "", false
+	}
+	result := strings.TrimSpace(buf.String())
+	if result == "" {
+		return "", false
+	}
+	return result, true
+}
+
+// consumeRedirect tries to consume a redirect operator and its target starting
+// at position pos in command. Returns (newPos, target, true) on success, where
+// target is the file path (empty string for fd dups like 2>&1).
+func consumeRedirect(command string, pos int) (int, string, bool) {
+	i := pos
+	n := len(command)
+
+	// Optional fd number: single digit directly before > (e.g., "2>" in "2> err.log").
+	if i < n && command[i] >= '0' && command[i] <= '9' &&
+		i+1 < n && command[i+1] == '>' {
+		i++ // consume fd digit
+	}
+
+	// &> or &>> (redirect both stdout and stderr).
+	if i == pos && i < n && command[i] == '&' &&
+		i+1 < n && command[i+1] == '>' {
+		i++ // consume &
+	}
+
+	if i >= n || command[i] != '>' {
+		return pos, "", false
+	}
+	i++ // consume first >
+
+	// >> (append mode).
+	isAppend := false
+	if i < n && command[i] == '>' {
+		i++
+		isAppend = true
+	}
+
+	// Fd dup: >&N — only valid after single >, not >>.
+	if !isAppend && i < n && command[i] == '&' &&
+		i+1 < n && command[i+1] >= '0' && command[i+1] <= '9' {
+		i += 2 // consume &N
+		for i < n && (command[i] == ' ' || command[i] == '\t') {
+			i++
+		}
+		return i, "", true
+	}
+
+	// Skip whitespace between operator and target.
+	for i < n && (command[i] == ' ' || command[i] == '\t') {
+		i++
+	}
+
+	// Read target filename.
+	tStart := i
+	for i < n && command[i] != ' ' && command[i] != '\t' &&
+		command[i] != '>' && command[i] != '<' &&
+		command[i] != '|' && command[i] != ';' && command[i] != '&' {
+		i++
+	}
+	if i == tStart {
+		return pos, "", false // no target
+	}
+
+	target := command[tStart:i]
+
+	// Skip trailing whitespace.
+	for i < n && (command[i] == ' ' || command[i] == '\t') {
+		i++
+	}
+
+	return i, target, true
+}
+
+// isSafeRedirectTarget returns true if the target path is within the current
+// directory (relative path without "..") or under /tmp/.
+func isSafeRedirectTarget(target string) bool {
+	cleaned := path.Clean(target)
+	if strings.HasPrefix(cleaned, "/tmp/") || cleaned == "/tmp" {
+		return true
+	}
+	if strings.HasPrefix(cleaned, "/") {
+		return false
+	}
+	// After cleaning, any ".." prefix means the path escapes the current directory.
+	return !strings.HasPrefix(cleaned, "..")
 }
 
 // globMatch performs glob-style pattern matching where * matches any sequence

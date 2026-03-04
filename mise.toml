@@ -15,3 +15,7 @@ run = "golangci-lint fmt ./..."
 description = "Lint and autofix with golangci-lint"
 depends = ["format"]
 run = "golangci-lint run --fix"
+
+[tasks.install]
+description = "Build and install the binary into ~/.local/bin"
+run = "go build -o ~/.local/bin/agent-blocker ./cmd/main.go"
