@@ -175,5 +175,6 @@ func DefaultRules(cwd string) []Matcher {
 		// Web
 		WebFetch(Allow, "domain:github.com"),
 		MCP(Allow, "mcp__codespelunker_*"),
+		MCP(Allow, "mcp__plugin_compound-engineering_context7__*"),
 	}
 }

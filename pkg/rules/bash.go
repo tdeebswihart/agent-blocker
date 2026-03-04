@@ -21,14 +21,70 @@ type BashRule struct {
 }
 
 // Bash creates a rule that matches bash commands against glob patterns.
-// Legacy ":*" suffix syntax is normalized to " *".
-// If no patterns are given, the rule matches all bash commands.
+// Patterns may contain alternation groups like (a|b|c), which are expanded
+// into separate patterns at construction time. Legacy ":*" suffix syntax
+// is normalized to " *". If no patterns are given, the rule matches all
+// bash commands.
 func Bash(decision Decision, cwd string, patterns ...string) *BashRule {
-	normalized := make([]string, len(patterns))
-	for i, p := range patterns {
-		normalized[i] = normalizeColonStar(p)
+	var expanded []string
+	for _, p := range patterns {
+		for _, alt := range expandAlternations(p) {
+			expanded = append(expanded, normalizeColonStar(alt))
+		}
 	}
-	return &BashRule{decision: decision, cwd: cwd, patterns: normalized}
+	return &BashRule{decision: decision, cwd: cwd, patterns: expanded}
+}
+
+// expandAlternations expands (a|b|c) groups in a pattern into multiple
+// patterns. Multiple groups produce a cartesian product. Groups without
+// | are left as literals (no expansion). Unmatched parentheses are left
+// as-is.
+func expandAlternations(pattern string) []string {
+	// Find the first '(' and its matching ')'.
+	open := strings.IndexByte(pattern, '(')
+	if open == -1 {
+		return []string{pattern}
+	}
+	close := matchingParen(pattern, open)
+	if close == -1 {
+		return []string{pattern} // unmatched '('
+	}
+
+	inner := pattern[open+1 : close]
+	if !strings.Contains(inner, "|") {
+		return []string{pattern} // no alternation, treat as literal
+	}
+
+	prefix := pattern[:open]
+	suffix := pattern[close+1:]
+	alternatives := strings.Split(inner, "|")
+
+	var results []string
+	for _, alt := range alternatives {
+		// Recursively expand remaining groups in the combined pattern.
+		for _, expanded := range expandAlternations(prefix + alt + suffix) {
+			results = append(results, expanded)
+		}
+	}
+	return results
+}
+
+// matchingParen returns the index of the ')' that matches the '(' at pos,
+// respecting nesting. Returns -1 if no match is found.
+func matchingParen(s string, pos int) int {
+	depth := 1
+	for i := pos + 1; i < len(s); i++ {
+		switch s[i] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 func (r *BashRule) Apply(input BashInput) *Result[PreToolUseOutput] {
