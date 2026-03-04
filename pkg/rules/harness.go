@@ -1,5 +1,7 @@
 package rules
 
+import "encoding/json"
+
 // Harness groups matchers by tool name, then evaluates incoming hook events.
 // All matching rules are applied and the best result wins: highest specificity,
 // then strictest decision (deny > ask > allow), then insertion order.
@@ -67,10 +69,9 @@ func pickBest(a, b *Result) *Result {
 	return a
 }
 
-// Evaluate runs all matching rules against the input and picks the best match.
-// The best match has the highest specificity; ties broken by decision strictness
-// (deny > ask > allow), then by insertion order. Returns Ask if nothing matches.
-func (h *Harness) Evaluate(input HookInput) *Result {
+// evaluateMatchers runs all matching rules against the input and picks the best
+// match. Returns nil when nothing matches (callers supply their own default).
+func (h *Harness) evaluateMatchers(input HookInput) *Result {
 	var best *Result
 	for _, m := range h.byTool[input.Name] {
 		if result := m.Match(input.Name, input.Input); result != nil {
@@ -82,9 +83,86 @@ func (h *Harness) Evaluate(input HookInput) *Result {
 			best = pickBest(best, result)
 		}
 	}
+	return best
+}
 
-	if best != nil {
-		return best
+// pickMostRestrictive returns the stricter of two results, ignoring specificity.
+// Deny > Ask > Allow. Used only for combining sub-command results.
+func pickMostRestrictive(a, b *Result) *Result {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	if decisionRank(a.Decision) <= decisionRank(b.Decision) {
+		return a
+	}
+	return b
+}
+
+// evaluateBashCompound handles compound Bash commands (those containing
+// unquoted &&, ||, ;, or |). It splits the command into sub-commands, evaluates
+// each independently, and returns the most restrictive result. Returns nil if
+// the command is not compound, letting the caller fall through to normal eval.
+func (h *Harness) evaluateBashCompound(input HookInput) *Result {
+	var bi BashInput
+	if err := json.Unmarshal(input.Input, &bi); err != nil {
+		return nil
+	}
+
+	command := stripExitCodeSuffix(bi.Command)
+	parts := splitCompoundCommand(command)
+	if len(parts) <= 1 {
+		return nil
+	}
+
+	// Evaluate the full (unsplit) command first — catches operator-containing
+	// patterns like "curl *| bash*".
+	var combined *Result
+	if result := h.evaluateMatchers(input); result != nil {
+		combined = result
+	}
+
+	for _, part := range parts {
+		subInput := HookInput{
+			Event: input.Event,
+			Name:  input.Name,
+			CWD:   input.CWD,
+			Input: mustMarshal(BashInput{Command: part}),
+		}
+		result := h.evaluateMatchers(subInput)
+		if result == nil {
+			result = NewResult(Ask, "no matching rule for: "+part)
+		}
+		combined = pickMostRestrictive(combined, result)
+	}
+
+	if combined == nil {
+		return NewResult(Ask, "no matching rule")
+	}
+	return combined
+}
+
+func mustMarshal(v any) json.RawMessage {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic("rules: mustMarshal: " + err.Error())
+	}
+	return b
+}
+
+// Evaluate runs all matching rules against the input and picks the best match.
+// For compound Bash commands, each sub-command is evaluated independently and
+// the most restrictive result wins. Returns Ask if nothing matches.
+func (h *Harness) Evaluate(input HookInput) *Result {
+	if input.Name == "Bash" {
+		if result := h.evaluateBashCompound(input); result != nil {
+			return result
+		}
+	}
+	if result := h.evaluateMatchers(input); result != nil {
+		return result
 	}
 	return NewResult(Ask, "no matching rule")
 }

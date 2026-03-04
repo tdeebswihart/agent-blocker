@@ -364,6 +364,64 @@ func TestBashRule_RedirectStripping(t *testing.T) {
 	}
 }
 
+func TestSplitCompoundCommand(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		want    []string
+	}{
+		{"and operator", "go test && lint", []string{"go test", "lint"}},
+		{"or operator", "go test || lint", []string{"go test", "lint"}},
+		{"semicolon", "go test; lint", []string{"go test", "lint"}},
+		{"pipe", "ls | grep foo", []string{"ls", "grep foo"}},
+		{"or vs pipe", "cmd1 || cmd2", []string{"cmd1", "cmd2"}},
+		{"mixed operators", "a && b || c", []string{"a", "b", "c"}},
+		{
+			"single-quoted operators",
+			`echo 'hello && world'`,
+			[]string{`echo 'hello && world'`},
+		},
+		{
+			"double-quoted operators",
+			`echo "hello && world"`,
+			[]string{`echo "hello && world"`},
+		},
+		{"no operators", "go test ./...", []string{"go test ./..."}},
+		{
+			"empty parts filtered",
+			"go test &&  && lint",
+			[]string{"go test", "lint"},
+		},
+		{
+			"three-way pipe",
+			"cat file | grep foo | wc -l",
+			[]string{"cat file", "grep foo", "wc -l"},
+		},
+		{
+			"semicolon and and",
+			"a; b && c",
+			[]string{"a", "b", "c"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := splitCompoundCommand(tt.command)
+			if len(got) != len(tt.want) {
+				t.Fatalf("splitCompoundCommand(%q) = %v, want %v", tt.command, got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Fatalf(
+						"splitCompoundCommand(%q)[%d] = %q, want %q",
+						tt.command, i, got[i], tt.want[i],
+					)
+				}
+			}
+		})
+	}
+}
+
 func TestBashRule_MiddleWildcard(t *testing.T) {
 	rule := Bash(Allow, "git * main")
 

@@ -132,29 +132,7 @@ func hasShellOperators(s string) bool {
 
 // containsUnquotedOperator scans for shell operators outside of quotes.
 func containsUnquotedOperator(s string) bool {
-	inSingle := false
-	inDouble := false
-	for i := 0; i < len(s); i++ {
-		ch := s[i]
-		switch {
-		case ch == '\'' && !inDouble:
-			inSingle = !inSingle
-		case ch == '"' && !inSingle:
-			inDouble = !inDouble
-		case inSingle || inDouble:
-			continue
-		case ch == ';':
-			return true
-		case ch == '|':
-			if i+1 < len(s) && s[i+1] == '|' {
-				return true // ||
-			}
-			return true // |
-		case ch == '&' && i+1 < len(s) && s[i+1] == '&':
-			return true // &&
-		}
-	}
-	return false
+	return len(splitCompoundCommand(s)) > 1
 }
 
 func containsAnyOperator(s string) bool {
@@ -394,6 +372,58 @@ func globMatch(pattern, s string) bool {
 		px++
 	}
 	return px == len(pattern)
+}
+
+// splitCompoundCommand splits a command string on unquoted shell operators
+// (||, &&, ;, |). Respects single and double quotes. Returns individual
+// commands trimmed of whitespace. Returns a single-element slice when no
+// unquoted operators are found.
+func splitCompoundCommand(command string) []string {
+	var parts []string
+	start := 0
+	inSingle := false
+	inDouble := false
+
+	for i := 0; i < len(command); i++ {
+		ch := command[i]
+		switch {
+		case ch == '\'' && !inDouble:
+			inSingle = !inSingle
+		case ch == '"' && !inSingle:
+			inDouble = !inDouble
+		case inSingle || inDouble:
+			continue
+		case ch == '&' && i+1 < len(command) && command[i+1] == '&':
+			if part := strings.TrimSpace(command[start:i]); part != "" {
+				parts = append(parts, part)
+			}
+			i++ // skip second &
+			start = i + 1
+		case ch == '|' && i+1 < len(command) && command[i+1] == '|':
+			if part := strings.TrimSpace(command[start:i]); part != "" {
+				parts = append(parts, part)
+			}
+			i++ // skip second |
+			start = i + 1
+		case ch == '|':
+			if part := strings.TrimSpace(command[start:i]); part != "" {
+				parts = append(parts, part)
+			}
+			start = i + 1
+		case ch == ';':
+			if part := strings.TrimSpace(command[start:i]); part != "" {
+				parts = append(parts, part)
+			}
+			start = i + 1
+		}
+	}
+	if part := strings.TrimSpace(command[start:]); part != "" {
+		parts = append(parts, part)
+	}
+	if len(parts) == 0 {
+		return []string{command}
+	}
+	return parts
 }
 
 func (r *BashRule) ToolName() string { return "Bash" }
