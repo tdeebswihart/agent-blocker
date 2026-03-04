@@ -3,7 +3,7 @@ package rules
 import "testing"
 
 func TestBashHeadTailRule(t *testing.T) {
-	rule := BashHeadTail()
+	rule := BashHeadTail("")
 
 	tests := []struct {
 		name    string

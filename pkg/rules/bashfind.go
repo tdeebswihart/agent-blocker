@@ -11,9 +11,9 @@ import (
 // all search paths are within the current directory tree (relative path without
 // "..") or under /tmp. Commands containing action flags (-exec, -delete, etc.)
 // are not matched, falling through to Ask.
-type BashFindRule struct{}
+type BashFindRule struct{ cwd string }
 
-func BashFind() *BashFindRule { return &BashFindRule{} }
+func BashFind(cwd string) *BashFindRule { return &BashFindRule{cwd: cwd} }
 
 func (r *BashFindRule) ToolName() string { return "Bash" }
 
@@ -26,16 +26,16 @@ func (r *BashFindRule) Match(_ string, input json.RawMessage) *Result[PreToolUse
 }
 
 func (r *BashFindRule) Apply(input BashInput) *Result[PreToolUseOutput] {
-	cmd := unwrapCommand(input.Command)
+	cmd := unwrapCommand(input.Command, r.cwd)
 	words, err := shellwords.Split(cmd)
 	if err != nil || len(words) < 1 {
 		return nil
 	}
 	switch words[0] {
 	case "find":
-		return applyFind(words)
+		return applyFind(words, r.cwd)
 	case "fd", "fdfind":
-		return applyFd(words)
+		return applyFd(words, r.cwd)
 	default:
 		return nil
 	}
@@ -52,7 +52,7 @@ var dangerousFindFlags = map[string]bool{
 // Options: -H, -L, -P, -D (with arg), -Olevel
 // Starting points: positional args before the first expression token
 // Expression tokens start with: -, (, ), !, ,
-func applyFind(words []string) *Result[PreToolUseOutput] {
+func applyFind(words []string, cwd string) *Result[PreToolUseOutput] {
 	i := 1
 
 	// Skip leading options: -H, -L, -P, -D debugopts, -Olevel
@@ -94,7 +94,7 @@ paths:
 		return NewResult(Allow, "find: defaults to cwd")
 	}
 	for _, p := range paths {
-		if !isSafeRedirectTarget(p) {
+		if !isSafeRedirectTarget(p, cwd) {
 			return nil
 		}
 	}
@@ -139,7 +139,7 @@ var fdArgFlags = map[string]bool{
 
 // applyFd handles fd/fdfind: fd [FLAGS/OPTIONS] [pattern] [path...]
 // Paths are trailing positional arguments or --search-path/--base-directory.
-func applyFd(words []string) *Result[PreToolUseOutput] {
+func applyFd(words []string, cwd string) *Result[PreToolUseOutput] {
 	var paths []string
 	var positionals []string
 	seenDoubleDash := false
@@ -213,7 +213,7 @@ func applyFd(words []string) *Result[PreToolUseOutput] {
 		return NewResult(Allow, "fd: defaults to cwd")
 	}
 	for _, p := range paths {
-		if !isSafeRedirectTarget(p) {
+		if !isSafeRedirectTarget(p, cwd) {
 			return nil
 		}
 	}

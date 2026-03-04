@@ -23,7 +23,7 @@ func TestParseCDTarget(t *testing.T) {
 		{"timeout 5m cd foo", strPtr("foo")},
 	}
 	for _, tt := range tests {
-		got := parseCDTarget(tt.command)
+		got := parseCDTarget(tt.command, "")
 		if tt.want == nil {
 			if got != nil {
 				t.Errorf("parseCDTarget(%q) = %q, want nil", tt.command, *got)

@@ -3,7 +3,7 @@ package rules
 import "testing"
 
 func TestBashEchoRule(t *testing.T) {
-	rule := BashEcho()
+	rule := BashEcho("")
 
 	tests := []struct {
 		name    string

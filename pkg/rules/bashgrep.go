@@ -12,10 +12,10 @@ import (
 // ".." or under /tmp/). Commands that use file-reading flags (-f, --file,
 // --pre, --ignore-file) are rejected because they bypass positional path
 // validation.
-type BashGrepRule struct{}
+type BashGrepRule struct{ cwd string }
 
 // BashGrep creates a semantic matcher for grep/rg commands.
-func BashGrep() *BashGrepRule { return &BashGrepRule{} }
+func BashGrep(cwd string) *BashGrepRule { return &BashGrepRule{cwd: cwd} }
 
 func (r *BashGrepRule) ToolName() string { return "Bash" }
 
@@ -28,7 +28,7 @@ func (r *BashGrepRule) Match(_ string, input json.RawMessage) *Result[PreToolUse
 }
 
 func (r *BashGrepRule) Apply(input BashInput) *Result[PreToolUseOutput] {
-	cmd := unwrapCommand(input.Command)
+	cmd := unwrapCommand(input.Command, r.cwd)
 
 	tokens, err := shellwords.Split(cmd)
 	if err != nil || len(tokens) == 0 {
@@ -126,7 +126,7 @@ func (r *BashGrepRule) Apply(input BashInput) *Result[PreToolUseOutput] {
 	}
 
 	for _, fp := range filePaths {
-		if !isSafeRedirectTarget(fp) {
+		if !isSafeRedirectTarget(fp, r.cwd) {
 			return nil
 		}
 	}

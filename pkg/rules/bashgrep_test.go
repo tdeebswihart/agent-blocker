@@ -3,7 +3,7 @@ package rules
 import "testing"
 
 func TestBashGrepRule(t *testing.T) {
-	rule := BashGrep()
+	rule := BashGrep("")
 
 	tests := []struct {
 		name    string

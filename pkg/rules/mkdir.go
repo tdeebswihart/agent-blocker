@@ -10,9 +10,9 @@ import (
 // target directory is within the current directory tree (relative path without
 // "..") or under /tmp. Uses the same safety semantics as redirect-target
 // validation (isSafeRedirectTarget).
-type MkdirRule struct{}
+type MkdirRule struct{ cwd string }
 
-func Mkdir() *MkdirRule { return &MkdirRule{} }
+func Mkdir(cwd string) *MkdirRule { return &MkdirRule{cwd: cwd} }
 
 func (r *MkdirRule) ToolName() string { return "Bash" }
 
@@ -25,12 +25,12 @@ func (r *MkdirRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOut
 }
 
 func (r *MkdirRule) Apply(input BashInput) *Result[PreToolUseOutput] {
-	dirs := parseMkdirTargets(input.Command)
+	dirs := parseMkdirTargets(input.Command, r.cwd)
 	if dirs == nil {
 		return nil
 	}
 	for _, d := range dirs {
-		if !isSafeRedirectTarget(d) {
+		if !isSafeRedirectTarget(d, r.cwd) {
 			return nil
 		}
 	}
@@ -39,8 +39,8 @@ func (r *MkdirRule) Apply(input BashInput) *Result[PreToolUseOutput] {
 
 // parseMkdirTargets extracts target directory paths from a mkdir command.
 // Returns nil if the command is not a mkdir command or has no targets.
-func parseMkdirTargets(command string) []string {
-	cmd := unwrapCommand(command)
+func parseMkdirTargets(command, cwd string) []string {
+	cmd := unwrapCommand(command, cwd)
 	words, err := shellwords.Split(cmd)
 	if err != nil || len(words) < 1 {
 		return nil

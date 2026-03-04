@@ -3,7 +3,7 @@ package rules
 import "testing"
 
 func TestBashFindRule_Find(t *testing.T) {
-	rule := BashFind()
+	rule := BashFind("")
 
 	tests := []struct {
 		command string
@@ -25,6 +25,9 @@ func TestBashFindRule_Find(t *testing.T) {
 		// Safe: leading options then safe path
 		{`find -L . -name "*.go"`, ptr(Allow)},
 		{`find -H -L . -name "*.go"`, ptr(Allow)},
+
+		// Safe: absolute path within cwd (only with cwd-aware rule)
+		// — tested in TestBashFindRule_FindWithCwd
 
 		// Unsafe: absolute path outside /tmp
 		{`find / -name "*.conf"`, nil},
@@ -69,7 +72,7 @@ func TestBashFindRule_Find(t *testing.T) {
 }
 
 func TestBashFindRule_Fd(t *testing.T) {
-	rule := BashFind()
+	rule := BashFind("")
 
 	tests := []struct {
 		command string
@@ -119,6 +122,89 @@ func TestBashFindRule_Fd(t *testing.T) {
 
 		// Transparent wrappers
 		{`timeout 5m fd pattern ./src`, ptr(Allow)},
+	}
+	for _, tt := range tests {
+		result := rule.Apply(BashInput{Command: tt.command})
+		if tt.want == nil {
+			if result != nil {
+				t.Errorf("Fd(%q) = %s, want nil",
+					tt.command, result.HookSpecificOutput.PermissionDecision)
+			}
+			continue
+		}
+		if result == nil {
+			t.Errorf("Fd(%q) = nil, want %s", tt.command, *tt.want)
+			continue
+		}
+		if result.HookSpecificOutput.PermissionDecision != *tt.want {
+			t.Errorf("Fd(%q) = %s, want %s",
+				tt.command,
+				result.HookSpecificOutput.PermissionDecision,
+				*tt.want)
+		}
+	}
+}
+
+func TestBashFindRule_FindWithCwd(t *testing.T) {
+	cwd := "/Users/tim/git/project"
+	rule := BashFind(cwd)
+
+	tests := []struct {
+		command string
+		want    *Decision
+	}{
+		// Absolute path equal to cwd
+		{`find /Users/tim/git/project -type f -name "*.md"`, ptr(Allow)},
+		// Absolute path within cwd
+		{`find /Users/tim/git/project/subdir -name "*.go"`, ptr(Allow)},
+		// Absolute path outside cwd — still blocked
+		{`find /Users/tim/git/other -name "*.go"`, nil},
+		{`find /etc -name "passwd"`, nil},
+		// Relative paths still work
+		{`find . -name "*.go"`, ptr(Allow)},
+		{`find src -name "*.go"`, ptr(Allow)},
+		// /tmp still works
+		{`find /tmp -name "*.log"`, ptr(Allow)},
+	}
+	for _, tt := range tests {
+		result := rule.Apply(BashInput{Command: tt.command})
+		if tt.want == nil {
+			if result != nil {
+				t.Errorf("Find(%q) = %s, want nil",
+					tt.command, result.HookSpecificOutput.PermissionDecision)
+			}
+			continue
+		}
+		if result == nil {
+			t.Errorf("Find(%q) = nil, want %s", tt.command, *tt.want)
+			continue
+		}
+		if result.HookSpecificOutput.PermissionDecision != *tt.want {
+			t.Errorf("Find(%q) = %s, want %s",
+				tt.command,
+				result.HookSpecificOutput.PermissionDecision,
+				*tt.want)
+		}
+	}
+}
+
+func TestBashFindRule_FdWithCwd(t *testing.T) {
+	cwd := "/Users/tim/git/project"
+	rule := BashFind(cwd)
+
+	tests := []struct {
+		command string
+		want    *Decision
+	}{
+		// Absolute path within cwd
+		{`fd pattern /Users/tim/git/project/src`, ptr(Allow)},
+		// Absolute path outside cwd
+		{`fd pattern /etc`, nil},
+		// --search-path with absolute cwd path
+		{`fd --search-path /Users/tim/git/project/src pattern`, ptr(Allow)},
+		{`fd --search-path=/Users/tim/git/project/src pattern`, ptr(Allow)},
+		// --search-path outside cwd
+		{`fd --search-path /etc pattern`, nil},
 	}
 	for _, tt := range tests {
 		result := rule.Apply(BashInput{Command: tt.command})

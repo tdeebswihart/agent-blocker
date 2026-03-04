@@ -40,7 +40,7 @@ func TestParseMkdirTargets(t *testing.T) {
 		{"mkdir", nil},
 	}
 	for _, tt := range tests {
-		got := parseMkdirTargets(tt.command)
+		got := parseMkdirTargets(tt.command, "")
 		if tt.want == nil {
 			if got != nil {
 				t.Errorf("parseMkdirTargets(%q) = %v, want nil", tt.command, got)
@@ -61,7 +61,7 @@ func TestParseMkdirTargets(t *testing.T) {
 }
 
 func TestMkdirRule(t *testing.T) {
-	rule := Mkdir()
+	rule := Mkdir("")
 
 	tests := []struct {
 		command string

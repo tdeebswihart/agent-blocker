@@ -12,8 +12,8 @@ func mustJSON(v any) json.RawMessage {
 
 func TestHarness_DenyBeforeAllow(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "rm *"),
-		Bash(Deny, "rm -rf *"),
+		Bash(Allow, "", "rm *"),
+		Bash(Deny, "", "rm -rf *"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -27,8 +27,8 @@ func TestHarness_DenyBeforeAllow(t *testing.T) {
 
 func TestHarness_DenyBeforeAsk(t *testing.T) {
 	h := NewHarness(
-		Bash(Ask, "git push *"),
-		Bash(Deny, "git push --force*"),
+		Bash(Ask, "", "git push *"),
+		Bash(Deny, "", "git push --force*"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -42,8 +42,8 @@ func TestHarness_DenyBeforeAsk(t *testing.T) {
 
 func TestHarness_AskBeforeAllow(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "curl *"),
-		Bash(Ask, "curl *"),
+		Bash(Allow, "", "curl *"),
+		Bash(Ask, "", "curl *"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -57,7 +57,7 @@ func TestHarness_AskBeforeAllow(t *testing.T) {
 
 func TestHarness_AllowWhenMatched(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "make lint"),
+		Bash(Allow, "", "make lint"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -71,7 +71,7 @@ func TestHarness_AllowWhenMatched(t *testing.T) {
 
 func TestHarness_NilWhenNoMatch(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "make lint"),
+		Bash(Allow, "", "make lint"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -85,7 +85,7 @@ func TestHarness_NilWhenNoMatch(t *testing.T) {
 
 func TestHarness_NilForUnknownTool(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "make lint"),
+		Bash(Allow, "", "make lint"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -124,7 +124,7 @@ func TestHarness_MCPWildcardRules(t *testing.T) {
 func TestHarness_MixedToolTypes(t *testing.T) {
 	opts := PathOpts{CWD: "/proj", Home: "/home/me", ProjectRoot: "/proj"}
 	h := NewHarness(
-		Bash(Allow, "make lint"),
+		Bash(Allow, "", "make lint"),
 		Read(Deny, "./.env", opts),
 		Read(Allow, opts), // bare Read = allow all
 	)
@@ -159,8 +159,8 @@ func TestHarness_MixedToolTypes(t *testing.T) {
 
 func TestHarness_InsertionOrderBreaksTies(t *testing.T) {
 	h := NewHarness(
-		Bash(Deny, "rm *"),
-		Bash(Deny, "rm -rf *"),
+		Bash(Deny, "", "rm *"),
+		Bash(Deny, "", "rm -rf *"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -230,8 +230,8 @@ func TestHarness_GlobDenyBeatsGlobAllow(t *testing.T) {
 func TestHarness_NonPathRulesUnchanged(t *testing.T) {
 	// Non-path rules (Bash) at equal specificity: stricter decision wins.
 	h := NewHarness(
-		Bash(Allow, "rm *"),
-		Bash(Deny, "rm -rf *"),
+		Bash(Allow, "", "rm *"),
+		Bash(Deny, "", "rm -rf *"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -297,9 +297,9 @@ func TestHarness_LogMCPSpecificTool(t *testing.T) {
 
 func TestHarness_CompoundBashDeny(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "go test *"),
-		Bash(Deny, "rm -rf *"),
-		Bash(Allow, "golangci-lint *"),
+		Bash(Allow, "", "go test *"),
+		Bash(Deny, "", "rm -rf *"),
+		Bash(Allow, "", "golangci-lint *"),
 	)
 
 	tests := []struct {
@@ -338,9 +338,9 @@ func TestHarness_CompoundBashDeny(t *testing.T) {
 
 func TestHarness_CompoundBashAllow(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "go test *"),
-		Bash(Deny, "rm -rf *"),
-		Bash(Allow, "golangci-lint *"),
+		Bash(Allow, "", "go test *"),
+		Bash(Deny, "", "rm -rf *"),
+		Bash(Allow, "", "golangci-lint *"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -355,9 +355,9 @@ func TestHarness_CompoundBashAllow(t *testing.T) {
 
 func TestHarness_CompoundBashAsk(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "go test *"),
-		Bash(Deny, "rm -rf *"),
-		Bash(Allow, "golangci-lint *"),
+		Bash(Allow, "", "go test *"),
+		Bash(Deny, "", "rm -rf *"),
+		Bash(Allow, "", "golangci-lint *"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -372,7 +372,7 @@ func TestHarness_CompoundBashAsk(t *testing.T) {
 
 func TestHarness_CompoundBashFullCommandPattern(t *testing.T) {
 	h := NewHarness(
-		Bash(Deny, "curl *| bash*", "curl *|bash*"),
+		Bash(Deny, "", "curl *| bash*", "curl *|bash*"),
 	)
 
 	result := h.Evaluate(HookInput{
@@ -387,8 +387,8 @@ func TestHarness_CompoundBashFullCommandPattern(t *testing.T) {
 
 func TestHarness_CompoundBashExitCodeSuffix(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "go test *"),
-		Bash(Allow, "golangci-lint *"),
+		Bash(Allow, "", "go test *"),
+		Bash(Allow, "", "golangci-lint *"),
 	)
 
 	// Exit-code suffix stripped before splitting, so the semicolon in the
@@ -407,8 +407,8 @@ func TestHarness_CompoundBashExitCodeSuffix(t *testing.T) {
 
 func TestHarness_CompoundBashTimeout(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "go test *"),
-		Bash(Allow, "golangci-lint *"),
+		Bash(Allow, "", "go test *"),
+		Bash(Allow, "", "golangci-lint *"),
 	)
 
 	// Timeout prefix stripped during sub-command evaluation.
@@ -424,9 +424,9 @@ func TestHarness_CompoundBashTimeout(t *testing.T) {
 
 func TestHarness_CompoundBashSemanticMatchers(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "jj file show *"),
-		BashGrep(),
-		BashEcho(),
+		Bash(Allow, "", "jj file show *"),
+		BashGrep(""),
+		BashEcho(""),
 	)
 
 	// All three sub-commands match rules: jj file show, grep, echo.
@@ -445,10 +445,10 @@ func TestHarness_CompoundBashSemanticMatchers(t *testing.T) {
 
 func TestHarness_CompoundBashXargs(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "find *"),
-		BashGrep(),
-		Bash(Allow, "wc *"),
-		Bash(Deny, "rm -rf *"),
+		Bash(Allow, "", "find *"),
+		BashGrep(""),
+		Bash(Allow, "", "wc *"),
+		Bash(Deny, "", "rm -rf *"),
 	)
 
 	// All sub-commands allowed: find, grep (via BashGrep semantic matcher), wc.
@@ -481,7 +481,7 @@ func TestHarness_CompoundBashXargs(t *testing.T) {
 func TestHarness_CompoundBashCDWithAbsolutePath(t *testing.T) {
 	h := NewHarness(
 		BashCD("/Users/tim/git/project"),
-		Bash(Allow, "go test *"),
+		Bash(Allow, "", "go test *"),
 	)
 
 	// cd to absolute path within project root + go test should both be allowed.
@@ -511,9 +511,43 @@ func TestHarness_CompoundBashCDWithAbsolutePath(t *testing.T) {
 	}
 }
 
+func TestHarness_CompoundBashFindAbsoluteCwdPath(t *testing.T) {
+	cwd := "/Users/tim/git/project"
+	h := NewHarness(
+		BashFind(cwd),
+		BashHeadTail(cwd),
+	)
+
+	// find with absolute path equal to cwd + piped to head — both allowed.
+	result := h.Evaluate(HookInput{
+		Name: "Bash",
+		Input: mustJSON(BashInput{
+			Command: `find /Users/tim/git/project -type f -name "*.md" | head -20`,
+		}),
+	})
+	if result.HookSpecificOutput.PermissionDecision != Allow {
+		t.Fatalf("expected Allow for find (abs cwd) | head, got %s (%s)",
+			result.HookSpecificOutput.PermissionDecision,
+			result.HookSpecificOutput.PermissionDecisionReason)
+	}
+
+	// find with absolute path outside cwd — should Ask.
+	result = h.Evaluate(HookInput{
+		Name: "Bash",
+		Input: mustJSON(BashInput{
+			Command: `find /etc -type f -name "*.conf" | head -20`,
+		}),
+	})
+	if result.HookSpecificOutput.PermissionDecision != Ask {
+		t.Fatalf("expected Ask for find (abs outside cwd) | head, got %s (%s)",
+			result.HookSpecificOutput.PermissionDecision,
+			result.HookSpecificOutput.PermissionDecisionReason)
+	}
+}
+
 func TestHarness_CompoundBashSingleCommand(t *testing.T) {
 	h := NewHarness(
-		Bash(Allow, "go test *"),
+		Bash(Allow, "", "go test *"),
 	)
 
 	// Single command (no operators) should still work via normal eval.

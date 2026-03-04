@@ -9,10 +9,10 @@ import (
 // command contains no unsafe variable substitutions. Safe builtins ($?, $#, $*,
 // $@) are permitted. Any other $ expansion or backtick substitution outside
 // single quotes is rejected to prevent environment variable exfiltration.
-type BashEchoRule struct{}
+type BashEchoRule struct{ cwd string }
 
 // BashEcho creates a semantic matcher for echo commands.
-func BashEcho() *BashEchoRule { return &BashEchoRule{} }
+func BashEcho(cwd string) *BashEchoRule { return &BashEchoRule{cwd: cwd} }
 
 func (r *BashEchoRule) ToolName() string { return "Bash" }
 
@@ -25,7 +25,7 @@ func (r *BashEchoRule) Match(_ string, input json.RawMessage) *Result[PreToolUse
 }
 
 func (r *BashEchoRule) Apply(input BashInput) *Result[PreToolUseOutput] {
-	cmd := strings.TrimSpace(unwrapCommand(input.Command))
+	cmd := strings.TrimSpace(unwrapCommand(input.Command, r.cwd))
 
 	if !strings.HasPrefix(cmd, "echo ") && cmd != "echo" {
 		return nil

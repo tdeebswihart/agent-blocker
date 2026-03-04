@@ -30,7 +30,7 @@ func (r *BashCDRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOu
 }
 
 func (r *BashCDRule) Apply(input BashInput) *Result[PreToolUseOutput] {
-	target := parseCDTarget(input.Command)
+	target := parseCDTarget(input.Command, r.projectRoot)
 	if target == nil {
 		return nil
 	}
@@ -50,8 +50,8 @@ func (r *BashCDRule) Apply(input BashInput) *Result[PreToolUseOutput] {
 
 // parseCDTarget extracts the target directory from a cd command.
 // Returns nil if the command is not a cd command.
-func parseCDTarget(command string) *string {
-	cmd := unwrapCommand(command)
+func parseCDTarget(command, cwd string) *string {
+	cmd := unwrapCommand(command, cwd)
 	words, err := shellwords.Split(cmd)
 	if err != nil || len(words) < 1 {
 		return nil

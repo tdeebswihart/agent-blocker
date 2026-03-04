@@ -17,7 +17,7 @@ func DefaultRules(cwd string) []Matcher {
 		// ================================================================
 
 		// 1Password CLI
-		Bash(Deny, "op:*"),
+		Bash(Deny, cwd, "op:*"),
 
 		// Secrets & env files
 		Read(Deny, "./.env", opts),
@@ -28,27 +28,27 @@ func DefaultRules(cwd string) []Matcher {
 		Read(Deny, "~/.secret/**", opts),
 
 		// Destructive shell commands (Trail of Bits)
-		Bash(Deny, "rm -rf:*"),
-		Bash(Deny, "rm -fr:*"),
-		Bash(Deny, "rm -f:*"),
-		Bash(Deny, "sudo:*"),
-		Bash(Deny, "mkfs:*"),
-		Bash(Deny, "dd:*"),
-		Bash(Deny, "diskutil:*"),
-		Bash(Deny, "curl:*|bash*"),
-		Bash(Deny, "wget:*|bash*"),
+		Bash(Deny, cwd, "rm -rf:*"),
+		Bash(Deny, cwd, "rm -fr:*"),
+		Bash(Deny, cwd, "rm -f:*"),
+		Bash(Deny, cwd, "sudo:*"),
+		Bash(Deny, cwd, "mkfs:*"),
+		Bash(Deny, cwd, "dd:*"),
+		Bash(Deny, cwd, "diskutil:*"),
+		Bash(Deny, cwd, "curl:*|bash*"),
+		Bash(Deny, cwd, "wget:*|bash*"),
 
 		// Destructive git ops
-		Bash(Deny, "git push --force*"),
-		Bash(Deny, "git push:*--force*"),
-		Bash(Deny, "git reset --hard*"),
+		Bash(Deny, cwd, "git push --force*"),
+		Bash(Deny, cwd, "git push:*--force*"),
+		Bash(Deny, cwd, "git reset --hard*"),
 
 		// No reflog
-		Bash(Deny, "git reflog:*"),
+		Bash(Deny, cwd, "git reflog:*"),
 
 		// Disallow gh api calls with non-GET method
-		Bash(Deny, "gh api:*-X*"),
-		Bash(Deny, "gh api:*--method*"),
+		Bash(Deny, cwd, "gh api:*-X*"),
+		Bash(Deny, cwd, "gh api:*--method*"),
 
 		// Shell config and SSH
 		Edit(Deny, "~/.bashrc", opts),
@@ -56,7 +56,7 @@ func DefaultRules(cwd string) []Matcher {
 		Edit(Deny, "~/.ssh/**", opts),
 
 		// No go doc HTTP server
-		Bash(Deny, "go doc:*-http:*"),
+		Bash(Deny, cwd, "go doc:*-http:*"),
 
 		// Sensitive directories
 		Read(Deny, "~/.ssh/**", opts),
@@ -77,26 +77,26 @@ func DefaultRules(cwd string) []Matcher {
 		// ASK — evaluated second
 		// ================================================================
 
-		Bash(Ask, "git push"),
-		Bash(Ask, "jj git push"),
-		Bash(Ask, "jj tug"),
-		Bash(Ask, "rm:*"),
-		Bash(Ask, "jj bookmark create:*"),
-		Bash(Ask, "jj bookmark set:*"),
+		Bash(Ask, cwd, "git push"),
+		Bash(Ask, cwd, "jj git push"),
+		Bash(Ask, cwd, "jj tug"),
+		Bash(Ask, cwd, "rm:*"),
+		Bash(Ask, cwd, "jj bookmark create:*"),
+		Bash(Ask, cwd, "jj bookmark set:*"),
 		WebSearch(Ask),
-		Bash(Ask, "wget:*"),
-		Bash(Ask, "curl:*"),
-		Bash(Ask, "http:*"),
-		Bash(Ask, "xh:*"),
+		Bash(Ask, cwd, "wget:*"),
+		Bash(Ask, cwd, "curl:*"),
+		Bash(Ask, cwd, "http:*"),
+		Bash(Ask, cwd, "xh:*"),
 
 		// ================================================================
 		// ALLOW — evaluated last, lowest priority
 		// ================================================================
 
 		// Normal repo actions
-		Bash(Allow, "make lint"),
-		Bash(Allow, "mise run test"),
-		Bash(Allow, "make walker-test*"),
+		Bash(Allow, cwd, "make lint"),
+		Bash(Allow, cwd, "mise run test"),
+		Bash(Allow, cwd, "make walker-test*"),
 
 		// File tools (bare = allow all)
 		Edit(Allow, opts),
@@ -109,63 +109,63 @@ func DefaultRules(cwd string) []Matcher {
 		Read(Allow, "~/go/pkg/mod/**/*.go", opts),
 
 		// Shell utilities
-		BashGrep(),
-		BashFind(),
-		Bash(Allow, "fastmod:*"),
-		Bash(Allow, "sed:*"),
-		Bash(Allow, "ls:*"),
-		Bash(Allow, "cut:*"),
-		Bash(Allow, "cat:*"),
-		Bash(Allow, "wc:*"),
-		BashEcho(),
-		BashHeadTail(),
-		Mkdir(),
+		BashGrep(cwd),
+		BashFind(cwd),
+		Bash(Allow, cwd, "fastmod:*"),
+		Bash(Allow, cwd, "sed:*"),
+		Bash(Allow, cwd, "ls:*"),
+		Bash(Allow, cwd, "cut:*"),
+		Bash(Allow, cwd, "cat:*"),
+		Bash(Allow, cwd, "wc:*"),
+		BashEcho(cwd),
+		BashHeadTail(cwd),
+		Mkdir(cwd),
 		BashCD(cwd),
-		Bash(Allow, "jq:*"),
-		Bash(Allow, "yq:*"),
+		Bash(Allow, cwd, "jq:*"),
+		Bash(Allow, cwd, "yq:*"),
 
 		// Git ops
-		Bash(Allow, "git show:*"),
-		Bash(Allow, "git diff:*"),
-		Bash(Allow, "git add:*"),
-		Bash(Allow, "git mv:*"),
-		Bash(Allow, "git log:*"),
-		Bash(Allow, "git grep:*"),
-		Bash(Allow, "jj diff:*"),
-		Bash(Allow, "jj log:*"),
-		Bash(Allow, "jj status:*"),
-		Bash(Allow, "jj new:*"),
-		Bash(Allow, "jj file show:*"),
-		Bash(Allow, "jj file search:*"),
-		Bash(Allow, "jj file annotate:*"),
-		Bash(Allow, "jj cat:*"),
-		Bash(Allow, "jj show:*"),
-		Bash(Allow, "jj commit:*"),
-		Bash(Allow, "jj squash:*"),
-		Bash(Allow, "jj evolog:*"),
-		Bash(Allow, "jj op log:*"),
-		Bash(Allow, "jj bookmark list:*"),
-		Bash(Allow, "jj bookmark create tim/:*"),
-		Bash(Allow, "gh run view:*"),
-		Bash(Allow, "gh pr view:*"),
-		Bash(Allow, "gh repo view:*"),
-		Bash(Allow, "gh pr diff:*"),
-		Bash(Allow, "gh-pr-info:*"),
-		Bash(Allow, "gh api:*"),
+		Bash(Allow, cwd, "git show:*"),
+		Bash(Allow, cwd, "git diff:*"),
+		Bash(Allow, cwd, "git add:*"),
+		Bash(Allow, cwd, "git mv:*"),
+		Bash(Allow, cwd, "git log:*"),
+		Bash(Allow, cwd, "git grep:*"),
+		Bash(Allow, cwd, "jj diff:*"),
+		Bash(Allow, cwd, "jj log:*"),
+		Bash(Allow, cwd, "jj status:*"),
+		Bash(Allow, cwd, "jj new:*"),
+		Bash(Allow, cwd, "jj file show:*"),
+		Bash(Allow, cwd, "jj file search:*"),
+		Bash(Allow, cwd, "jj file annotate:*"),
+		Bash(Allow, cwd, "jj cat:*"),
+		Bash(Allow, cwd, "jj show:*"),
+		Bash(Allow, cwd, "jj commit:*"),
+		Bash(Allow, cwd, "jj squash:*"),
+		Bash(Allow, cwd, "jj evolog:*"),
+		Bash(Allow, cwd, "jj op log:*"),
+		Bash(Allow, cwd, "jj bookmark list:*"),
+		Bash(Allow, cwd, "jj bookmark create tim/:*"),
+		Bash(Allow, cwd, "gh run view:*"),
+		Bash(Allow, cwd, "gh pr view:*"),
+		Bash(Allow, cwd, "gh repo view:*"),
+		Bash(Allow, cwd, "gh pr diff:*"),
+		Bash(Allow, cwd, "gh-pr-info:*"),
+		Bash(Allow, cwd, "gh api:*"),
 		Read(Allow, "~/.config/gh/config.yaml", opts),
 		Read(Allow, "~/.config/gh/hosts.yaml", opts),
-		Bash(Allow, "curr-pr-info"),
+		Bash(Allow, cwd, "curr-pr-info"),
 
 		// Go
 		MCP(Allow, "mcp__gopls__go_*"),
-		Bash(Allow, "go test:*"),
-		Bash(Allow, "go build:*"),
-		Bash(Allow, "go mod:*"),
-		Bash(Allow, "go list:*"),
-		Bash(Allow, "go doc:*"),
-		Bash(Allow, "go vet:*"),
-		Bash(Allow, "go generate:*"),
-		Bash(Allow, "golangci-lint:*"),
+		Bash(Allow, cwd, "go test:*"),
+		Bash(Allow, cwd, "go build:*"),
+		Bash(Allow, cwd, "go mod:*"),
+		Bash(Allow, cwd, "go list:*"),
+		Bash(Allow, cwd, "go doc:*"),
+		Bash(Allow, cwd, "go vet:*"),
+		Bash(Allow, cwd, "go generate:*"),
+		Bash(Allow, cwd, "golangci-lint:*"),
 		Read(Allow, "~/go/pkg/mod/**", opts),
 
 		// Web

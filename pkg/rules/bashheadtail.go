@@ -10,10 +10,10 @@ import (
 // BashHeadTailRule is a semantic matcher for head and tail commands. It allows
 // invocations that read from STDIN or read safe file paths (relative without
 // ".." or under /tmp/).
-type BashHeadTailRule struct{}
+type BashHeadTailRule struct{ cwd string }
 
 // BashHeadTail creates a semantic matcher for head/tail commands.
-func BashHeadTail() *BashHeadTailRule { return &BashHeadTailRule{} }
+func BashHeadTail(cwd string) *BashHeadTailRule { return &BashHeadTailRule{cwd: cwd} }
 
 func (r *BashHeadTailRule) ToolName() string { return "Bash" }
 
@@ -26,7 +26,7 @@ func (r *BashHeadTailRule) Match(_ string, input json.RawMessage) *Result[PreToo
 }
 
 func (r *BashHeadTailRule) Apply(input BashInput) *Result[PreToolUseOutput] {
-	cmd := unwrapCommand(input.Command)
+	cmd := unwrapCommand(input.Command, r.cwd)
 
 	tokens, err := shellwords.Split(cmd)
 	if err != nil || len(tokens) == 0 {
@@ -88,7 +88,7 @@ func (r *BashHeadTailRule) Apply(input BashInput) *Result[PreToolUseOutput] {
 	}
 
 	for _, fp := range filePaths {
-		if !isSafeRedirectTarget(fp) {
+		if !isSafeRedirectTarget(fp, r.cwd) {
 			return nil
 		}
 	}

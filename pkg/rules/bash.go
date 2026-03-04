@@ -16,18 +16,19 @@ type BashInput struct {
 
 type BashRule struct {
 	decision Decision
+	cwd      string
 	patterns []string
 }
 
 // Bash creates a rule that matches bash commands against glob patterns.
 // Legacy ":*" suffix syntax is normalized to " *".
 // If no patterns are given, the rule matches all bash commands.
-func Bash(decision Decision, patterns ...string) *BashRule {
+func Bash(decision Decision, cwd string, patterns ...string) *BashRule {
 	normalized := make([]string, len(patterns))
 	for i, p := range patterns {
 		normalized[i] = normalizeColonStar(p)
 	}
-	return &BashRule{decision: decision, patterns: normalized}
+	return &BashRule{decision: decision, cwd: cwd, patterns: normalized}
 }
 
 func (r *BashRule) Apply(input BashInput) *Result[PreToolUseOutput] {
@@ -35,7 +36,7 @@ func (r *BashRule) Apply(input BashInput) *Result[PreToolUseOutput] {
 		return NewResult(r.decision, "matches all Bash commands")
 	}
 	for _, pattern := range r.patterns {
-		if bashMatch(pattern, input.Command) {
+		if bashMatch(pattern, input.Command, r.cwd) {
 			return NewResult(r.decision, "matched pattern: "+pattern)
 		}
 	}
@@ -69,7 +70,7 @@ func isWordChar(c byte) bool {
 // bashMatch checks if a command matches a glob pattern, with shell operator
 // safety: if the command contains shell operators (&&, ||, ;, |) but the
 // pattern does not, the match fails.
-func bashMatch(pattern, command string) bool {
+func bashMatch(pattern, command, cwd string) bool {
 	// Strip known safe suffixes before any checks — the exit-code echo
 	// contains a semicolon that would otherwise trigger operator rejection.
 	command = stripExitCodeSuffix(command)
@@ -93,15 +94,15 @@ func bashMatch(pattern, command string) bool {
 	}
 	// See through a `timeout` wrapper to match the underlying command.
 	if stripped, ok := stripTimeoutPrefix(command); ok {
-		return bashMatch(pattern, stripped)
+		return bashMatch(pattern, stripped, cwd)
 	}
 	// See through an `xargs` wrapper to match the underlying command.
 	if stripped, ok := stripXargsPrefix(command); ok {
-		return bashMatch(pattern, stripped)
+		return bashMatch(pattern, stripped, cwd)
 	}
 	// See through output redirects to safe locations (current dir or /tmp/).
-	if stripped, ok := stripRedirects(command); ok {
-		return bashMatch(pattern, stripped)
+	if stripped, ok := stripRedirects(command, cwd); ok {
+		return bashMatch(pattern, stripped, cwd)
 	}
 	return false
 }
@@ -207,7 +208,7 @@ func stripTimeoutPrefix(command string) (string, bool) {
 // redirects from a command string, returning the underlying command. Wrappers
 // are stripped in a loop so that any nesting order (e.g., timeout wrapping
 // xargs or vice versa) is handled.
-func unwrapCommand(cmd string) string {
+func unwrapCommand(cmd, cwd string) string {
 	for {
 		if stripped, ok := stripTimeoutPrefix(cmd); ok {
 			cmd = stripped
@@ -219,7 +220,7 @@ func unwrapCommand(cmd string) string {
 		}
 		break
 	}
-	if stripped, ok := stripRedirects(cmd); ok {
+	if stripped, ok := stripRedirects(cmd, cwd); ok {
 		cmd = stripped
 	}
 	return cmd
@@ -294,7 +295,7 @@ func stripXargsPrefix(command string) (string, bool) {
 // (relative paths without ".." or absolute paths under /tmp/) are stripped.
 // Fd dups like 2>&1 are always stripped. Returns ("", false) if no redirects
 // are found or any redirect target is unsafe.
-func stripRedirects(command string) (string, bool) {
+func stripRedirects(command, cwd string) (string, bool) {
 	var buf strings.Builder
 	found := false
 	i := 0
@@ -332,7 +333,7 @@ func stripRedirects(command string) (string, bool) {
 		}
 
 		if consumed, target, ok := consumeRedirect(command, i); ok {
-			if target != "" && !isSafeRedirectTarget(target) {
+			if target != "" && !isSafeRedirectTarget(target, cwd) {
 				return "", false
 			}
 			found = true
@@ -422,13 +423,17 @@ func consumeRedirect(command string, pos int) (int, string, bool) {
 }
 
 // isSafeRedirectTarget returns true if the target path is within the current
-// directory (relative path without "..") or under /tmp/.
-func isSafeRedirectTarget(target string) bool {
+// directory (relative path without ".."), under /tmp/, or an absolute path
+// that is a descendant of cwd.
+func isSafeRedirectTarget(target, cwd string) bool {
 	cleaned := path.Clean(target)
 	if strings.HasPrefix(cleaned, "/tmp/") || cleaned == "/tmp" {
 		return true
 	}
 	if strings.HasPrefix(cleaned, "/") {
+		if cwd != "" {
+			return isDescendantOf(cleaned, path.Clean(cwd))
+		}
 		return false
 	}
 	// After cleaning, any ".." prefix means the path escapes the current directory.
