@@ -31,9 +31,10 @@ type Result struct {
 // Claude Code reads permissionDecision from hookSpecificOutput rather than
 // the deprecated top-level decision/reason fields.
 type PreToolUseOutput struct {
-	HookEventName      string   `json:"hookEventName"`
-	PermissionDecision Decision `json:"permissionDecision"`
-	AdditionalContext  string   `json:"additionalContext,omitempty"`
+	HookEventName           string   `json:"hookEventName"`
+	PermissionDecision      Decision `json:"permissionDecision"`
+	PermissionDecisionReason string  `json:"permissionDecisionReason,omitempty"`
+	AdditionalContext       string   `json:"additionalContext,omitempty"`
 }
 
 // Matcher is the common interface for all rule types. Each matcher knows which
@@ -59,9 +60,9 @@ func (r *Result) WithSpecificity(s Specificity) *Result {
 
 func NewResult(decision Decision, reason string) *Result {
 	output := PreToolUseOutput{
-		HookEventName:      "PreToolUse",
-		PermissionDecision: decision,
-		AdditionalContext:  reason,
+		HookEventName:            "PreToolUse",
+		PermissionDecision:       decision,
+		PermissionDecisionReason: reason,
 	}
 	raw, _ := json.Marshal(output)
 	return &Result{
