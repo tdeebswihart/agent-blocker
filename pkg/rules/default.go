@@ -72,6 +72,7 @@ func DefaultRules(cwd string) []Matcher {
 		Read(Deny, "~/.pypirc", opts),
 		Read(Deny, "~/.gem/credentials", opts),
 		Read(Deny, "~/Library/Keychains/**", opts),
+		Bash(Deny, cwd, "mise run install:*"),
 
 		// ================================================================
 		// ASK — evaluated second
@@ -92,6 +93,9 @@ func DefaultRules(cwd string) []Matcher {
 		// ================================================================
 		// ALLOW — evaluated last, lowest priority
 		// ================================================================
+		Bash(Allow, cwd, "mise run:*"),
+		Bash(Allow, cwd, "mise tasks:*"),
+		Bash(Allow, cwd, "mise fmt:*"),
 
 		// Normal repo actions
 		Bash(Allow, cwd, "make lint"),
