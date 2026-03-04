@@ -168,5 +168,5 @@ func (h *Harness) Evaluate(input HookInput) *Result[PreToolUseOutput] {
 	if result := h.evaluateMatchers(input); result != nil {
 		return result
 	}
-	return NewResult(Ask, "no matching rule")
+	return nil
 }

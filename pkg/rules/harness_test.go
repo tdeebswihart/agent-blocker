@@ -69,7 +69,7 @@ func TestHarness_AllowWhenMatched(t *testing.T) {
 	}
 }
 
-func TestHarness_DefaultAskWhenNoMatch(t *testing.T) {
+func TestHarness_NilWhenNoMatch(t *testing.T) {
 	h := NewHarness(
 		Bash(Allow, "make lint"),
 	)
@@ -78,12 +78,12 @@ func TestHarness_DefaultAskWhenNoMatch(t *testing.T) {
 		Name:  "Bash",
 		Input: mustJSON(BashInput{Command: "rm -rf /"}),
 	})
-	if result.HookSpecificOutput.PermissionDecision != Ask {
-		t.Fatalf("expected default Ask when no rules match, got %s", result.HookSpecificOutput.PermissionDecision)
+	if result != nil {
+		t.Fatalf("expected nil when no rules match, got %+v", result)
 	}
 }
 
-func TestHarness_DefaultAskForUnknownTool(t *testing.T) {
+func TestHarness_NilForUnknownTool(t *testing.T) {
 	h := NewHarness(
 		Bash(Allow, "make lint"),
 	)
@@ -92,8 +92,8 @@ func TestHarness_DefaultAskForUnknownTool(t *testing.T) {
 		Name:  "SomethingNew",
 		Input: mustJSON(map[string]string{"foo": "bar"}),
 	})
-	if result.HookSpecificOutput.PermissionDecision != Ask {
-		t.Fatalf("expected default Ask for unknown tool, got %s", result.HookSpecificOutput.PermissionDecision)
+	if result != nil {
+		t.Fatalf("expected nil for unknown tool, got %+v", result)
 	}
 }
 
@@ -116,8 +116,8 @@ func TestHarness_MCPWildcardRules(t *testing.T) {
 		Name:  "mcp__other__tool",
 		Input: mustJSON(map[string]any{}),
 	})
-	if result.HookSpecificOutput.PermissionDecision != Ask {
-		t.Fatalf("expected default Ask for non-matching MCP tool, got %s", result.HookSpecificOutput.PermissionDecision)
+	if result != nil {
+		t.Fatalf("expected nil for non-matching MCP tool, got %+v", result)
 	}
 }
 

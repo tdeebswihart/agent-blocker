@@ -73,6 +73,9 @@ func main() {
 
 	harness := rules.NewHarness(rules.DefaultRules(hook.CWD)...)
 	result := harness.Evaluate(hook)
+	if result == nil {
+		return
+	}
 
 	out, err := json.Marshal(result)
 	if err != nil {
