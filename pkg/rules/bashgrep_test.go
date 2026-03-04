@@ -52,6 +52,3 @@ func TestBashGrepRule(t *testing.T) {
 		})
 	}
 }
-
-//go:fix inline
-func ptr(d Decision) *Decision { return new(d) }

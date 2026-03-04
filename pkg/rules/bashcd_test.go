@@ -40,9 +40,6 @@ func TestParseCDTarget(t *testing.T) {
 	}
 }
 
-//go:fix inline
-func strPtr(s string) *string { return new(s) }
-
 func TestBashCDRule(t *testing.T) {
 	rule := BashCD("/home/user/project")
 
