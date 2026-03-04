@@ -163,13 +163,10 @@ func DefaultRules(cwd string) []Matcher {
 		Bash(Allow, "go list:*"),
 		Bash(Allow, "go doc:*"),
 		Bash(Allow, "go generate:*"),
-		MCP(Allow, "mcp__codespelunker_*"),
 		Read(Allow, "~/go/pkg/mod/**", opts),
-
-		// Skills
-		Skill(Allow, "code-review:code-review"),
 
 		// Web
 		WebFetch(Allow, "domain:github.com"),
+		MCP(Allow, "mcp__codespelunker_*"),
 	}
 }
