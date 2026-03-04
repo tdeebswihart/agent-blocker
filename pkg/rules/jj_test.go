@@ -114,7 +114,10 @@ func TestJJEditEmptyRule_AllowsEmpty(t *testing.T) {
 		t.Fatal("expected result for jj edit command")
 	}
 	if result.HookSpecificOutput.PermissionDecision != Allow {
-		t.Fatalf("expected Allow for empty revision, got %s", result.HookSpecificOutput.PermissionDecision)
+		t.Fatalf(
+			"expected Allow for empty revision, got %s",
+			result.HookSpecificOutput.PermissionDecision,
+		)
 	}
 }
 
@@ -128,7 +131,10 @@ func TestJJEditEmptyRule_DeniesNonEmpty(t *testing.T) {
 		t.Fatal("expected result for jj edit command")
 	}
 	if result.HookSpecificOutput.PermissionDecision != Deny {
-		t.Fatalf("expected Deny for non-empty revision, got %s", result.HookSpecificOutput.PermissionDecision)
+		t.Fatalf(
+			"expected Deny for non-empty revision, got %s",
+			result.HookSpecificOutput.PermissionDecision,
+		)
 	}
 }
 
@@ -165,7 +171,10 @@ func TestJJAbandonEmptyRule_AllowsAllEmpty(t *testing.T) {
 		t.Fatal("expected result for jj abandon command")
 	}
 	if result.HookSpecificOutput.PermissionDecision != Allow {
-		t.Fatalf("expected Allow when all revisions empty, got %s", result.HookSpecificOutput.PermissionDecision)
+		t.Fatalf(
+			"expected Allow when all revisions empty, got %s",
+			result.HookSpecificOutput.PermissionDecision,
+		)
 	}
 }
 
@@ -179,7 +188,10 @@ func TestJJAbandonEmptyRule_DeniesAnyNonEmpty(t *testing.T) {
 		t.Fatal("expected result for jj abandon command")
 	}
 	if result.HookSpecificOutput.PermissionDecision != Deny {
-		t.Fatalf("expected Deny when any revision non-empty, got %s", result.HookSpecificOutput.PermissionDecision)
+		t.Fatalf(
+			"expected Deny when any revision non-empty, got %s",
+			result.HookSpecificOutput.PermissionDecision,
+		)
 	}
 }
 

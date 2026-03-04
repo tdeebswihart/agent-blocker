@@ -7,10 +7,10 @@ func TestParseCDTarget(t *testing.T) {
 		command string
 		want    *string
 	}{
-		{"cd foo", strPtr("foo")},
-		{"cd /tmp/test", strPtr("/tmp/test")},
-		{"cd ../parent", strPtr("../parent")},
-		{`cd "path with spaces"`, strPtr("path with spaces")},
+		{"cd foo", new("foo")},
+		{"cd /tmp/test", new("/tmp/test")},
+		{"cd ../parent", new("../parent")},
+		{`cd "path with spaces"`, new("path with spaces")},
 
 		// cd with no args (goes to $HOME)
 		{"cd", nil},
@@ -20,7 +20,7 @@ func TestParseCDTarget(t *testing.T) {
 		{"echo cd foo", nil},
 
 		// Transparent wrappers (unusual but handled)
-		{"timeout 5m cd foo", strPtr("foo")},
+		{"timeout 5m cd foo", new("foo")},
 	}
 	for _, tt := range tests {
 		got := parseCDTarget(tt.command, "")
@@ -40,7 +40,8 @@ func TestParseCDTarget(t *testing.T) {
 	}
 }
 
-func strPtr(s string) *string { return &s }
+//go:fix inline
+func strPtr(s string) *string { return new(s) }
 
 func TestBashCDRule(t *testing.T) {
 	rule := BashCD("/home/user/project")
@@ -50,19 +51,19 @@ func TestBashCDRule(t *testing.T) {
 		want    *Decision
 	}{
 		// Safe: relative paths within project root
-		{"cd src", ptr(Allow)},
-		{"cd src/pkg", ptr(Allow)},
-		{"cd .", ptr(Allow)},
-		{"cd ./tests", ptr(Allow)},
+		{"cd src", new(Allow)},
+		{"cd src/pkg", new(Allow)},
+		{"cd .", new(Allow)},
+		{"cd ./tests", new(Allow)},
 
 		// Safe: absolute path within project root
-		{"cd /home/user/project", ptr(Allow)},
-		{"cd /home/user/project/src", ptr(Allow)},
-		{"cd /home/user/project/deep/nested/dir", ptr(Allow)},
+		{"cd /home/user/project", new(Allow)},
+		{"cd /home/user/project/src", new(Allow)},
+		{"cd /home/user/project/deep/nested/dir", new(Allow)},
 
 		// Safe: /tmp paths
-		{"cd /tmp", ptr(Allow)},
-		{"cd /tmp/test", ptr(Allow)},
+		{"cd /tmp", new(Allow)},
+		{"cd /tmp/test", new(Allow)},
 
 		// Unsafe: absolute path outside project root
 		{"cd /etc", nil},

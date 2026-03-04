@@ -68,17 +68,17 @@ func TestMkdirRule(t *testing.T) {
 		want    *Decision // nil = no match, non-nil = expected decision
 	}{
 		// Safe: relative paths (under cwd)
-		{"mkdir foo", ptr(Allow)},
-		{"mkdir -p foo/bar/baz", ptr(Allow)},
-		{"mkdir subdir", ptr(Allow)},
+		{"mkdir foo", new(Allow)},
+		{"mkdir -p foo/bar/baz", new(Allow)},
+		{"mkdir subdir", new(Allow)},
 
 		// Safe: /tmp paths
-		{"mkdir /tmp/test", ptr(Allow)},
-		{"mkdir /tmp/test/nested", ptr(Allow)},
-		{"mkdir -p /tmp/deep/nested/dir", ptr(Allow)},
+		{"mkdir /tmp/test", new(Allow)},
+		{"mkdir /tmp/test/nested", new(Allow)},
+		{"mkdir -p /tmp/deep/nested/dir", new(Allow)},
 
 		// Safe: mixed relative and /tmp
-		{"mkdir foo /tmp/bar", ptr(Allow)},
+		{"mkdir foo /tmp/bar", new(Allow)},
 
 		// Unsafe: absolute paths outside /tmp
 		{"mkdir /etc/something", nil},

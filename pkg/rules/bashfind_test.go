@@ -10,21 +10,21 @@ func TestBashFindRule_Find(t *testing.T) {
 		want    *Decision
 	}{
 		// Safe: no explicit path (defaults to .)
-		{`find -name "*.go"`, ptr(Allow)},
-		{`find -type f`, ptr(Allow)},
+		{`find -name "*.go"`, new(Allow)},
+		{`find -type f`, new(Allow)},
 
 		// Safe: explicit cwd-relative paths
-		{`find . -name "*.go"`, ptr(Allow)},
-		{`find ./src -name "*.go" -type f`, ptr(Allow)},
-		{`find src tests -name "*.go"`, ptr(Allow)},
+		{`find . -name "*.go"`, new(Allow)},
+		{`find ./src -name "*.go" -type f`, new(Allow)},
+		{`find src tests -name "*.go"`, new(Allow)},
 
 		// Safe: /tmp paths
-		{`find /tmp -name "*.log"`, ptr(Allow)},
-		{`find /tmp/test -type f`, ptr(Allow)},
+		{`find /tmp -name "*.log"`, new(Allow)},
+		{`find /tmp/test -type f`, new(Allow)},
 
 		// Safe: leading options then safe path
-		{`find -L . -name "*.go"`, ptr(Allow)},
-		{`find -H -L . -name "*.go"`, ptr(Allow)},
+		{`find -L . -name "*.go"`, new(Allow)},
+		{`find -H -L . -name "*.go"`, new(Allow)},
 
 		// Safe: absolute path within cwd (only with cwd-aware rule)
 		// — tested in TestBashFindRule_FindWithCwd
@@ -47,7 +47,7 @@ func TestBashFindRule_Find(t *testing.T) {
 		{"grep foo", nil},
 
 		// Transparent wrappers
-		{`timeout 5m find . -name "*.go"`, ptr(Allow)},
+		{`timeout 5m find . -name "*.go"`, new(Allow)},
 	}
 	for _, tt := range tests {
 		result := rule.Apply(BashInput{Command: tt.command})
@@ -79,23 +79,23 @@ func TestBashFindRule_Fd(t *testing.T) {
 		want    *Decision
 	}{
 		// Safe: no explicit path (defaults to .)
-		{`fd "*.go"`, ptr(Allow)},
-		{`fd -t f pattern`, ptr(Allow)},
-		{`fd`, ptr(Allow)},
+		{`fd "*.go"`, new(Allow)},
+		{`fd -t f pattern`, new(Allow)},
+		{`fd`, new(Allow)},
 
 		// Safe: explicit relative paths
-		{`fd pattern ./src`, ptr(Allow)},
-		{`fd pattern src tests`, ptr(Allow)},
+		{`fd pattern ./src`, new(Allow)},
+		{`fd pattern src tests`, new(Allow)},
 
 		// Safe: /tmp paths
-		{`fd pattern /tmp`, ptr(Allow)},
-		{`fd pattern /tmp/test`, ptr(Allow)},
+		{`fd pattern /tmp`, new(Allow)},
+		{`fd pattern /tmp/test`, new(Allow)},
 
 		// Safe: --search-path and --base-directory
-		{`fd --search-path ./src pattern`, ptr(Allow)},
-		{`fd --base-directory src pattern`, ptr(Allow)},
-		{`fd --search-path=./src pattern`, ptr(Allow)},
-		{`fd --base-directory=src pattern`, ptr(Allow)},
+		{`fd --search-path ./src pattern`, new(Allow)},
+		{`fd --base-directory src pattern`, new(Allow)},
+		{`fd --search-path=./src pattern`, new(Allow)},
+		{`fd --base-directory=src pattern`, new(Allow)},
 
 		// Unsafe: absolute path outside /tmp
 		{`fd pattern /etc`, nil},
@@ -118,10 +118,10 @@ func TestBashFindRule_Fd(t *testing.T) {
 		{"ls -la", nil},
 
 		// fdfind alias
-		{`fdfind "*.go"`, ptr(Allow)},
+		{`fdfind "*.go"`, new(Allow)},
 
 		// Transparent wrappers
-		{`timeout 5m fd pattern ./src`, ptr(Allow)},
+		{`timeout 5m fd pattern ./src`, new(Allow)},
 	}
 	for _, tt := range tests {
 		result := rule.Apply(BashInput{Command: tt.command})
@@ -154,17 +154,17 @@ func TestBashFindRule_FindWithCwd(t *testing.T) {
 		want    *Decision
 	}{
 		// Absolute path equal to cwd
-		{`find /Users/tim/git/project -type f -name "*.md"`, ptr(Allow)},
+		{`find /Users/tim/git/project -type f -name "*.md"`, new(Allow)},
 		// Absolute path within cwd
-		{`find /Users/tim/git/project/subdir -name "*.go"`, ptr(Allow)},
+		{`find /Users/tim/git/project/subdir -name "*.go"`, new(Allow)},
 		// Absolute path outside cwd — still blocked
 		{`find /Users/tim/git/other -name "*.go"`, nil},
 		{`find /etc -name "passwd"`, nil},
 		// Relative paths still work
-		{`find . -name "*.go"`, ptr(Allow)},
-		{`find src -name "*.go"`, ptr(Allow)},
+		{`find . -name "*.go"`, new(Allow)},
+		{`find src -name "*.go"`, new(Allow)},
 		// /tmp still works
-		{`find /tmp -name "*.log"`, ptr(Allow)},
+		{`find /tmp -name "*.log"`, new(Allow)},
 	}
 	for _, tt := range tests {
 		result := rule.Apply(BashInput{Command: tt.command})
@@ -197,12 +197,12 @@ func TestBashFindRule_FdWithCwd(t *testing.T) {
 		want    *Decision
 	}{
 		// Absolute path within cwd
-		{`fd pattern /Users/tim/git/project/src`, ptr(Allow)},
+		{`fd pattern /Users/tim/git/project/src`, new(Allow)},
 		// Absolute path outside cwd
 		{`fd pattern /etc`, nil},
 		// --search-path with absolute cwd path
-		{`fd --search-path /Users/tim/git/project/src pattern`, ptr(Allow)},
-		{`fd --search-path=/Users/tim/git/project/src pattern`, ptr(Allow)},
+		{`fd --search-path /Users/tim/git/project/src pattern`, new(Allow)},
+		{`fd --search-path=/Users/tim/git/project/src pattern`, new(Allow)},
 		// --search-path outside cwd
 		{`fd --search-path /etc pattern`, nil},
 	}
