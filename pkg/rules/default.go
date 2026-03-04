@@ -118,6 +118,7 @@ func DefaultRules(cwd string) []Matcher {
 		Bash(Allow, cwd, "fastmod:*"),
 		Bash(Allow, cwd, "sed:*"),
 		Bash(Allow, cwd, "ls:*"),
+		Bash(Allow, cwd, "wc:*"),
 		Bash(Allow, cwd, "cut:*"),
 		Bash(Allow, cwd, "cat:*"),
 		Bash(Allow, cwd, "wc:*"),
@@ -162,13 +163,7 @@ func DefaultRules(cwd string) []Matcher {
 
 		// Go
 		MCP(Allow, "mcp__gopls__go_*"),
-		Bash(Allow, cwd, "go test:*"),
-		Bash(Allow, cwd, "go build:*"),
-		Bash(Allow, cwd, "go mod:*"),
-		Bash(Allow, cwd, "go list:*"),
-		Bash(Allow, cwd, "go doc:*"),
-		Bash(Allow, cwd, "go vet:*"),
-		Bash(Allow, cwd, "go generate:*"),
+		Bash(Allow, cwd, "go (test|build|mod|list|doc|vet|generate):*"),
 		Bash(Allow, cwd, "golangci-lint:*"),
 		Read(Allow, "~/go/pkg/mod/**", opts),
 
