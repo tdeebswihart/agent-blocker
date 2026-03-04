@@ -42,7 +42,7 @@ func WebSearch(decision Decision, specifiers ...string) *WebFetchRule {
 	return &WebFetchRule{toolName: "WebSearch", decision: decision, domains: domains}
 }
 
-func (r *WebFetchRule) Apply(input WebFetchInput) *Result {
+func (r *WebFetchRule) Apply(input WebFetchInput) *Result[PreToolUseOutput] {
 	if len(r.domains) == 0 {
 		return NewResult(r.decision, "matches all "+r.toolName+" operations")
 	}
@@ -60,7 +60,7 @@ func (r *WebFetchRule) Apply(input WebFetchInput) *Result {
 }
 
 func (r *WebFetchRule) ToolName() string { return r.toolName }
-func (r *WebFetchRule) Match(_ string, input json.RawMessage) *Result {
+func (r *WebFetchRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in WebFetchInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil

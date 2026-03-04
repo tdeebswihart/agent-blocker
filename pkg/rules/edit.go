@@ -25,7 +25,7 @@ func Edit(decision Decision, args ...any) *EditRule {
 	return &EditRule{decision: decision, matchers: matchers}
 }
 
-func (r *EditRule) Apply(input EditInput) *Result {
+func (r *EditRule) Apply(input EditInput) *Result[PreToolUseOutput] {
 	if len(r.matchers) == 0 {
 		return NewResult(r.decision, "matches all Edit operations")
 	}
@@ -39,7 +39,7 @@ func (r *EditRule) Apply(input EditInput) *Result {
 }
 
 func (r *EditRule) ToolName() string { return "Edit" }
-func (r *EditRule) Match(_ string, input json.RawMessage) *Result {
+func (r *EditRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in EditInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil

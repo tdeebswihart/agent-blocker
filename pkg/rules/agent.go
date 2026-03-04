@@ -21,7 +21,7 @@ func Agent(decision Decision, patterns ...string) *AgentRule {
 	return &AgentRule{decision: decision, patterns: patterns}
 }
 
-func (r *AgentRule) Apply(input AgentInput) *Result {
+func (r *AgentRule) Apply(input AgentInput) *Result[PreToolUseOutput] {
 	if len(r.patterns) == 0 {
 		return NewResult(r.decision, "matches all Agent operations")
 	}
@@ -35,7 +35,7 @@ func (r *AgentRule) Apply(input AgentInput) *Result {
 }
 
 func (r *AgentRule) ToolName() string { return "Agent" }
-func (r *AgentRule) Match(_ string, input json.RawMessage) *Result {
+func (r *AgentRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in AgentInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil

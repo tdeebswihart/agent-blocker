@@ -19,7 +19,7 @@ func Skill(decision Decision, patterns ...string) *SkillRule {
 	return &SkillRule{decision: decision, patterns: patterns}
 }
 
-func (r *SkillRule) Apply(input SkillInput) *Result {
+func (r *SkillRule) Apply(input SkillInput) *Result[PreToolUseOutput] {
 	if len(r.patterns) == 0 {
 		return NewResult(r.decision, "matches all Skill operations")
 	}
@@ -32,7 +32,7 @@ func (r *SkillRule) Apply(input SkillInput) *Result {
 }
 
 func (r *SkillRule) ToolName() string { return "Skill" }
-func (r *SkillRule) Match(_ string, input json.RawMessage) *Result {
+func (r *SkillRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in SkillInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil

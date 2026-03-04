@@ -50,7 +50,7 @@ func JJEditEmpty() *JJEditEmptyRule {
 
 func (r *JJEditEmptyRule) ToolName() string { return "Bash" }
 
-func (r *JJEditEmptyRule) Match(_ string, input json.RawMessage) *Result {
+func (r *JJEditEmptyRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in BashInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil
@@ -58,7 +58,7 @@ func (r *JJEditEmptyRule) Match(_ string, input json.RawMessage) *Result {
 	return r.Apply(in)
 }
 
-func (r *JJEditEmptyRule) Apply(input BashInput) *Result {
+func (r *JJEditEmptyRule) Apply(input BashInput) *Result[PreToolUseOutput] {
 	revsets := parseJJEditRevsets(input.Command)
 	if revsets == nil {
 		return nil
@@ -85,7 +85,7 @@ func JJAbandonEmpty() *JJAbandonEmptyRule {
 
 func (r *JJAbandonEmptyRule) ToolName() string { return "Bash" }
 
-func (r *JJAbandonEmptyRule) Match(_ string, input json.RawMessage) *Result {
+func (r *JJAbandonEmptyRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in BashInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil
@@ -93,7 +93,7 @@ func (r *JJAbandonEmptyRule) Match(_ string, input json.RawMessage) *Result {
 	return r.Apply(in)
 }
 
-func (r *JJAbandonEmptyRule) Apply(input BashInput) *Result {
+func (r *JJAbandonEmptyRule) Apply(input BashInput) *Result[PreToolUseOutput] {
 	revsets := parseJJAbandonRevsets(input.Command)
 	if revsets == nil {
 		return nil

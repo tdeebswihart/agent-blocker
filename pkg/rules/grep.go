@@ -41,7 +41,7 @@ func Search(decision Decision, args ...any) *GrepRule {
 	return &GrepRule{toolName: "Search", decision: decision, matchers: matchers}
 }
 
-func (r *GrepRule) Apply(input GrepInput) *Result {
+func (r *GrepRule) Apply(input GrepInput) *Result[PreToolUseOutput] {
 	if len(r.matchers) == 0 {
 		return NewResult(r.decision, "matches all "+r.toolName+" operations")
 	}
@@ -55,7 +55,7 @@ func (r *GrepRule) Apply(input GrepInput) *Result {
 }
 
 func (r *GrepRule) ToolName() string { return r.toolName }
-func (r *GrepRule) Match(_ string, input json.RawMessage) *Result {
+func (r *GrepRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in GrepInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil

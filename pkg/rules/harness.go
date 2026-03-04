@@ -49,7 +49,7 @@ func decisionRank(d Decision) int {
 // pickBest returns the more specific/stricter of two results.
 // Higher Specificity wins; ties broken by decision rank (deny > ask > allow);
 // ties broken by insertion order (a wins).
-func pickBest(a, b *Result) *Result {
+func pickBest(a, b *Result[PreToolUseOutput]) *Result[PreToolUseOutput] {
 	if a == nil {
 		return b
 	}
@@ -63,7 +63,8 @@ func pickBest(a, b *Result) *Result {
 		return a
 	}
 	// Equal specificity: lower decision rank (stricter) wins.
-	if decisionRank(b.decision) < decisionRank(a.decision) {
+	if decisionRank(b.HookSpecificOutput.PermissionDecision) <
+		decisionRank(a.HookSpecificOutput.PermissionDecision) {
 		return b
 	}
 	return a
@@ -71,8 +72,8 @@ func pickBest(a, b *Result) *Result {
 
 // evaluateMatchers runs all matching rules against the input and picks the best
 // match. Returns nil when nothing matches (callers supply their own default).
-func (h *Harness) evaluateMatchers(input HookInput) *Result {
-	var best *Result
+func (h *Harness) evaluateMatchers(input HookInput) *Result[PreToolUseOutput] {
+	var best *Result[PreToolUseOutput]
 	for _, m := range h.byTool[input.Name] {
 		if result := m.Match(input.Name, input.Input); result != nil {
 			best = pickBest(best, result)
@@ -88,14 +89,17 @@ func (h *Harness) evaluateMatchers(input HookInput) *Result {
 
 // pickMostRestrictive returns the stricter of two results, ignoring specificity.
 // Deny > Ask > Allow. Used only for combining sub-command results.
-func pickMostRestrictive(a, b *Result) *Result {
+func pickMostRestrictive(
+	a, b *Result[PreToolUseOutput],
+) *Result[PreToolUseOutput] {
 	if a == nil {
 		return b
 	}
 	if b == nil {
 		return a
 	}
-	if decisionRank(a.decision) <= decisionRank(b.decision) {
+	if decisionRank(a.HookSpecificOutput.PermissionDecision) <=
+		decisionRank(b.HookSpecificOutput.PermissionDecision) {
 		return a
 	}
 	return b
@@ -105,7 +109,7 @@ func pickMostRestrictive(a, b *Result) *Result {
 // unquoted &&, ||, ;, or |). It splits the command into sub-commands, evaluates
 // each independently, and returns the most restrictive result. Returns nil if
 // the command is not compound, letting the caller fall through to normal eval.
-func (h *Harness) evaluateBashCompound(input HookInput) *Result {
+func (h *Harness) evaluateBashCompound(input HookInput) *Result[PreToolUseOutput] {
 	var bi BashInput
 	if err := json.Unmarshal(input.Input, &bi); err != nil {
 		return nil
@@ -119,7 +123,7 @@ func (h *Harness) evaluateBashCompound(input HookInput) *Result {
 
 	// Evaluate the full (unsplit) command first — catches operator-containing
 	// patterns like "curl *| bash*".
-	var combined *Result
+	var combined *Result[PreToolUseOutput]
 	if result := h.evaluateMatchers(input); result != nil {
 		combined = result
 	}
@@ -155,7 +159,7 @@ func mustMarshal(v any) json.RawMessage {
 // Evaluate runs all matching rules against the input and picks the best match.
 // For compound Bash commands, each sub-command is evaluated independently and
 // the most restrictive result wins. Returns Ask if nothing matches.
-func (h *Harness) Evaluate(input HookInput) *Result {
+func (h *Harness) Evaluate(input HookInput) *Result[PreToolUseOutput] {
 	if input.Name == "Bash" {
 		if result := h.evaluateBashCompound(input); result != nil {
 			return result

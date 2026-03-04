@@ -25,7 +25,7 @@ func GlobRule(decision Decision, args ...any) *GlobRuleT {
 	return &GlobRuleT{decision: decision, matchers: matchers}
 }
 
-func (r *GlobRuleT) Apply(input GlobInput) *Result {
+func (r *GlobRuleT) Apply(input GlobInput) *Result[PreToolUseOutput] {
 	if len(r.matchers) == 0 {
 		return NewResult(r.decision, "matches all Glob operations")
 	}
@@ -39,7 +39,7 @@ func (r *GlobRuleT) Apply(input GlobInput) *Result {
 }
 
 func (r *GlobRuleT) ToolName() string { return "Glob" }
-func (r *GlobRuleT) Match(_ string, input json.RawMessage) *Result {
+func (r *GlobRuleT) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in GlobInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil

@@ -33,7 +33,7 @@ func Read(decision Decision, args ...any) *ReadRule {
 	return &ReadRule{decision: decision, matchers: matchers}
 }
 
-func (r *ReadRule) Apply(input ReadInput) *Result {
+func (r *ReadRule) Apply(input ReadInput) *Result[PreToolUseOutput] {
 	if len(r.matchers) == 0 {
 		return NewResult(r.decision, "matches all Read operations")
 	}
@@ -63,7 +63,7 @@ func parsePathArgs(args []any) ([]string, PathOpts) {
 }
 
 func (r *ReadRule) ToolName() string { return "Read" }
-func (r *ReadRule) Match(_ string, input json.RawMessage) *Result {
+func (r *ReadRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in ReadInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil

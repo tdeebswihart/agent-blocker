@@ -30,7 +30,7 @@ func Bash(decision Decision, patterns ...string) *BashRule {
 	return &BashRule{decision: decision, patterns: normalized}
 }
 
-func (r *BashRule) Apply(input BashInput) *Result {
+func (r *BashRule) Apply(input BashInput) *Result[PreToolUseOutput] {
 	if len(r.patterns) == 0 {
 		return NewResult(r.decision, "matches all Bash commands")
 	}
@@ -427,7 +427,7 @@ func splitCompoundCommand(command string) []string {
 }
 
 func (r *BashRule) ToolName() string { return "Bash" }
-func (r *BashRule) Match(_ string, input json.RawMessage) *Result {
+func (r *BashRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in BashInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil

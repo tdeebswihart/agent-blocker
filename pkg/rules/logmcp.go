@@ -25,7 +25,7 @@ func LogMCP(decision Decision, args ...any) *LogMCPRule {
 	return &LogMCPRule{decision: decision, matchers: matchers}
 }
 
-func (r *LogMCPRule) Apply(input LogMCPInput) *Result {
+func (r *LogMCPRule) Apply(input LogMCPInput) *Result[PreToolUseOutput] {
 	if len(r.matchers) == 0 {
 		return NewResult(r.decision, "matches all LogMCP operations")
 	}
@@ -39,7 +39,7 @@ func (r *LogMCPRule) Apply(input LogMCPInput) *Result {
 }
 
 func (r *LogMCPRule) ToolName() string { return "mcp__log-mcp__search_logs" }
-func (r *LogMCPRule) Match(_ string, input json.RawMessage) *Result {
+func (r *LogMCPRule) Match(_ string, input json.RawMessage) *Result[PreToolUseOutput] {
 	var in LogMCPInput
 	if err := json.Unmarshal(input, &in); err != nil {
 		return nil

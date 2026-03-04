@@ -9,8 +9,8 @@ func TestReadRule_DenyEnvFiles(t *testing.T) {
 
 	if result := rule.Apply(ReadInput{FilePath: "/proj/.env"}); result == nil {
 		t.Fatal("expected match for .env")
-	} else if result.decision != Deny {
-		t.Fatalf("expected Deny, got %s", result.decision)
+	} else if result.HookSpecificOutput.PermissionDecision != Deny {
+		t.Fatalf("expected Deny, got %s", result.HookSpecificOutput.PermissionDecision)
 	}
 
 	if result := rule.Apply(ReadInput{FilePath: "/proj/.envrc"}); result == nil {

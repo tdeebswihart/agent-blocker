@@ -20,25 +20,22 @@ const (
 	ExactPath                      // no glob metacharacters
 )
 
-type Result struct {
-	// decision and reason are internal — Claude Code reads these from
-	// hookSpecificOutput.PermissionDecision/PermissionDecisionReason.
-	decision    Decision
-	reason      string
-	Continue    bool            `json:"continue"`
-	StopReason  string          `json:"stopReason,omitempty"`
-	Specificity Specificity     `json:"-"`
-	HookSpecificOutput json.RawMessage `json:"hookSpecificOutput"`
+// Result carries the outcome of a rule evaluation. The type parameter T holds
+// the hook-specific output (e.g. PreToolUseOutput for PreToolUse events).
+type Result[T any] struct {
+	Continue           bool        `json:"continue"`
+	StopReason         string      `json:"stopReason,omitempty"`
+	Specificity        Specificity `json:"-"`
+	HookSpecificOutput T           `json:"hookSpecificOutput"`
 }
 
 // PreToolUseOutput is the hook-specific output for PreToolUse events.
-// Claude Code reads permissionDecision from hookSpecificOutput rather than
-// the deprecated top-level decision/reason fields.
+// Claude Code reads permissionDecision from hookSpecificOutput.
 type PreToolUseOutput struct {
-	HookEventName           string   `json:"hookEventName"`
-	PermissionDecision      Decision `json:"permissionDecision"`
-	PermissionDecisionReason string  `json:"permissionDecisionReason,omitempty"`
-	AdditionalContext       string   `json:"additionalContext,omitempty"`
+	HookEventName            string   `json:"hookEventName"`
+	PermissionDecision       Decision `json:"permissionDecision"`
+	PermissionDecisionReason string   `json:"permissionDecisionReason,omitempty"`
+	AdditionalContext        string   `json:"additionalContext,omitempty"`
 }
 
 // Matcher is the common interface for all rule types. Each matcher knows which
@@ -46,7 +43,7 @@ type PreToolUseOutput struct {
 // the input matches.
 type Matcher interface {
 	ToolName() string
-	Match(toolName string, input json.RawMessage) *Result
+	Match(toolName string, input json.RawMessage) *Result[PreToolUseOutput]
 }
 
 // HookInput is the JSON structure received from Claude Code's PreToolUse hook.
@@ -57,22 +54,18 @@ type HookInput struct {
 	Input json.RawMessage `json:"tool_input"`
 }
 
-func (r *Result) WithSpecificity(s Specificity) *Result {
+func (r *Result[T]) WithSpecificity(s Specificity) *Result[T] {
 	r.Specificity = s
 	return r
 }
 
-func NewResult(decision Decision, reason string) *Result {
-	output := PreToolUseOutput{
-		HookEventName:            "PreToolUse",
-		PermissionDecision:       decision,
-		PermissionDecisionReason: reason,
-	}
-	raw, _ := json.Marshal(output)
-	return &Result{
-		decision:           decision,
-		reason:             reason,
-		Continue:           true,
-		HookSpecificOutput: raw,
+func NewResult(decision Decision, reason string) *Result[PreToolUseOutput] {
+	return &Result[PreToolUseOutput]{
+		Continue: true,
+		HookSpecificOutput: PreToolUseOutput{
+			HookEventName:            "PreToolUse",
+			PermissionDecision:       decision,
+			PermissionDecisionReason: reason,
+		},
 	}
 }
