@@ -49,6 +49,7 @@ func DefaultRules(cwd string) []Matcher {
 		// Disallow gh api calls with non-GET method
 		Bash(Deny, cwd, "gh api:*-X*"),
 		Bash(Deny, cwd, "gh api:*--method*"),
+		Bash(Deny, cwd, "make install:*"),
 
 		// Shell config and SSH
 		Edit(Deny, "~/.bashrc", opts),
@@ -98,9 +99,8 @@ func DefaultRules(cwd string) []Matcher {
 		Bash(Allow, cwd, "mise fmt:*"),
 
 		// Normal repo actions
-		Bash(Allow, cwd, "make lint"),
+		Bash(Allow, cwd, "make:*"),
 		Bash(Allow, cwd, "mise run test"),
-		Bash(Allow, cwd, "make walker-test*"),
 
 		// File tools (bare = allow all)
 		Edit(Allow, opts),
