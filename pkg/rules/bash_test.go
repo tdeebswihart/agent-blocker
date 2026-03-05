@@ -527,6 +527,9 @@ func TestIsSafeRedirectTarget(t *testing.T) {
 		{"../escape", false},
 		{"foo/../../escape", false},
 
+		// /dev/null always safe
+		{"/dev/null", true},
+
 		// /tmp always safe
 		{"/tmp", true},
 		{"/tmp/foo.log", true},
@@ -560,6 +563,7 @@ func TestIsSafeRedirectTarget_NoCwd(t *testing.T) {
 		want   bool
 	}{
 		{"relative", true},
+		{"/dev/null", true},
 		{"/tmp/foo", true},
 		{"/etc/passwd", false},
 		{"/some/absolute/path", false},

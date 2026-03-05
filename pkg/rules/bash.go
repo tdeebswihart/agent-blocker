@@ -483,6 +483,9 @@ func consumeRedirect(command string, pos int) (int, string, bool) {
 // that is a descendant of cwd.
 func isSafeRedirectTarget(target, cwd string) bool {
 	cleaned := path.Clean(target)
+	if cleaned == "/dev/null" {
+		return true
+	}
 	if strings.HasPrefix(cleaned, "/tmp/") || cleaned == "/tmp" {
 		return true
 	}

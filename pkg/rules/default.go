@@ -90,6 +90,12 @@ func DefaultRules(cwd string) []Matcher {
 		Bash(Ask, cwd, "curl:*"),
 		Bash(Ask, cwd, "http:*"),
 		Bash(Ask, cwd, "xh:*"),
+		Bash(Ask, cwd, "sed:*"),
+		Bash(Ask, cwd, "true:*"),
+		Bash(Ask, cwd, "false:*"),
+		Bash(Ask, cwd, "printf:*"),
+		Bash(Ask, cwd, "nix search:*"),
+		Bash(Ask, cwd, "nix eval:*"),
 
 		// ================================================================
 		// ALLOW — evaluated last, lowest priority
