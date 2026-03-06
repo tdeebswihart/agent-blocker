@@ -182,7 +182,6 @@ func DefaultRules(cwd string) []Matcher {
 		// MCP optimizations
 		MCP(Allow, "mcp__codespelunker_*"),
 		MCP(Allow, "mcp__plugin_compound-engineering_context7__*"),
-		MCP(Allow, "mcp__plugin_context-mode_context-mode__ctx_search*"),
-		MCP(Allow, "mcp__plugin_context-mode_context-mode__ctx_stats*"),
+		MCP(Allow, "mcp__plugin_context-mode_context-mode__*"),
 	}
 }
