@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"codeberg.org/timods/agent-blocker/pkg/logging"
 	"codeberg.org/timods/agent-blocker/pkg/rules"
@@ -72,7 +73,10 @@ func main() {
 		fatal("parsing hook input: %v", err)
 	}
 
-	harness := rules.NewHarness(rules.DefaultRules(hook.CWD)...)
+	home, _ := os.UserHomeDir()
+	settingsPath := filepath.Join(home, ".claude", "settings.json")
+	allRules := append(rules.DefaultRules(hook.CWD), rules.SettingsRules(settingsPath, hook.CWD)...)
+	harness := rules.NewHarness(allRules...)
 	result := harness.Evaluate(hook)
 	logging.LogInvocation(hook, result)
 	if result == nil {
