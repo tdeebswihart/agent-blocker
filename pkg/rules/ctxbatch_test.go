@@ -1,6 +1,9 @@
 package rules
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestCtxBatch_AllAllowed(t *testing.T) {
 	h := NewHarness(
@@ -108,6 +111,15 @@ func TestCtxBatch_CompoundCommandInBatch(t *testing.T) {
 	})
 	if result == nil || result.HookSpecificOutput.PermissionDecision != Deny {
 		t.Fatalf("expected Deny for compound with denied sub-command, got %+v", result)
+	}
+	// Reason should have batch prefix wrapping subcommand prefix, not duplicated
+	// "subcommand" prefixes.
+	reason := result.HookSpecificOutput.PermissionDecisionReason
+	if !strings.Contains(reason, `batch command`) {
+		t.Fatalf("reason %q should contain batch command prefix", reason)
+	}
+	if !strings.Contains(reason, `subcommand "rm -rf /"`) {
+		t.Fatalf("reason %q should contain the triggering subcommand", reason)
 	}
 }
 

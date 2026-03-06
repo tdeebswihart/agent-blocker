@@ -2,6 +2,7 @@ package rules
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -426,6 +427,51 @@ func TestHarness_CompoundBashAsk(t *testing.T) {
 			result.HookSpecificOutput.PermissionDecision,
 			result.HookSpecificOutput.PermissionDecisionReason,
 		)
+	}
+}
+
+func TestHarness_CompoundBashReasonContainsSubcommand(t *testing.T) {
+	h := NewHarness(
+		Bash(Allow, "", "go test *"),
+		Bash(Deny, "", "rm -rf *"),
+		Bash(Allow, "", "golangci-lint *"),
+	)
+
+	tests := []struct {
+		name           string
+		command        string
+		wantDecision   Decision
+		wantSubcommand string
+	}{
+		{
+			"deny reason includes triggering subcommand",
+			"go test ./... && rm -rf /tmp/foo",
+			Deny,
+			`"rm -rf /tmp/foo"`,
+		},
+		{
+			"ask reason includes unmatched subcommand",
+			"go test ./... && wc -l /tmp/bar",
+			Ask,
+			`"wc -l /tmp/bar"`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := h.Evaluate(HookInput{
+				Name:  "Bash",
+				Input: mustJSON(BashInput{Command: tt.command}),
+			})
+			reason := result.HookSpecificOutput.PermissionDecisionReason
+			if result.HookSpecificOutput.PermissionDecision != tt.wantDecision {
+				t.Fatalf("expected %s, got %s (%s)", tt.wantDecision,
+					result.HookSpecificOutput.PermissionDecision, reason)
+			}
+			if !strings.Contains(reason, tt.wantSubcommand) {
+				t.Fatalf("reason %q should contain subcommand %s",
+					reason, tt.wantSubcommand)
+			}
+		})
 	}
 }
 

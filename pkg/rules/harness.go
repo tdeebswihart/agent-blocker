@@ -1,6 +1,9 @@
 package rules
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // Harness groups matchers by tool name, then evaluates incoming hook events.
 // All matching rules are applied and the best result wins: highest specificity,
@@ -137,7 +140,13 @@ func (h *Harness) evaluateBashCompound(input HookInput) *Result[PreToolUseOutput
 		}
 		result := h.evaluateMatchers(subInput)
 		if result == nil {
-			result = NewResult(Ask, "no matching rule for: "+part)
+			result = NewResult(Ask, "no matching rule")
+		}
+		if result.HookSpecificOutput.PermissionDecision != Allow {
+			result.HookSpecificOutput.PermissionDecisionReason = fmt.Sprintf(
+				"subcommand %q: %s", part,
+				result.HookSpecificOutput.PermissionDecisionReason,
+			)
 		}
 		combined = pickMostRestrictive(combined, result)
 	}
@@ -180,7 +189,13 @@ func (h *Harness) evaluateCtxBatchExecute(input HookInput) *Result[PreToolUseOut
 		}
 		result := h.Evaluate(subInput)
 		if result == nil {
-			result = NewResult(Ask, "no matching rule for: "+cmd.Command)
+			result = NewResult(Ask, "no matching rule")
+		}
+		if result.HookSpecificOutput.PermissionDecision != Allow {
+			result.HookSpecificOutput.PermissionDecisionReason = fmt.Sprintf(
+				"batch command %q: %s", cmd.Command,
+				result.HookSpecificOutput.PermissionDecisionReason,
+			)
 		}
 		combined = pickMostRestrictive(combined, result)
 	}
