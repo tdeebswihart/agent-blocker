@@ -83,26 +83,26 @@ func DefaultRules(cwd string) []Matcher {
 		Bash(Ask, cwd, "jj git push"),
 		Bash(Ask, cwd, "jj tug"),
 		Bash(Ask, cwd, "rm:*"),
-		Bash(Ask, cwd, "jj bookmark create:*"),
 		Bash(Ask, cwd, "jj bookmark set:*"),
 		WebSearch(Ask),
 		Bash(Ask, cwd, "wget:*"),
 		Bash(Ask, cwd, "curl:*"),
 		Bash(Ask, cwd, "http:*"),
 		Bash(Ask, cwd, "xh:*"),
-		Bash(Ask, cwd, "sed:*"),
-		Bash(Ask, cwd, "true:*"),
-		Bash(Ask, cwd, "false:*"),
-		Bash(Ask, cwd, "printf:*"),
-		Bash(Ask, cwd, "nix search:*"),
-		Bash(Ask, cwd, "nix eval:*"),
 
 		// ================================================================
 		// ALLOW — evaluated last, lowest priority
 		// ================================================================
+		Bash(Allow, cwd, "jj bookmark create:*"),
 		Bash(Allow, cwd, "mise run:*"),
 		Bash(Allow, cwd, "mise tasks:*"),
 		Bash(Allow, cwd, "mise fmt:*"),
+		Bash(Allow, cwd, "sed:*"),
+		Bash(Allow, cwd, "true:*"),
+		Bash(Allow, cwd, "false:*"),
+		Bash(Allow, cwd, "printf:*"),
+		Bash(Allow, cwd, "nix search:*"),
+		Bash(Allow, cwd, "nix eval:*"),
 
 		// Normal repo actions
 		Bash(Allow, cwd, "make:*"),
@@ -138,6 +138,7 @@ func DefaultRules(cwd string) []Matcher {
 
 		// Git ops
 		Bash(Allow, cwd, "git show:*"),
+		Bash(Allow, cwd, "git ls-files:*"),
 		Bash(Allow, cwd, "git diff:*"),
 		Bash(Allow, cwd, "git add:*"),
 		Bash(Allow, cwd, "git mv:*"),

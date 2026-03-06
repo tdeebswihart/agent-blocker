@@ -157,12 +157,47 @@ func mustMarshal(v any) json.RawMessage {
 	return b
 }
 
+// evaluateCtxBatchExecute handles ctx_batch_execute calls by evaluating each
+// command through the full Bash evaluation pipeline. Returns the most
+// restrictive result across all commands. Returns nil if parsing fails.
+func (h *Harness) evaluateCtxBatchExecute(input HookInput) *Result[PreToolUseOutput] {
+	var batch CtxBatchExecuteInput
+	if err := json.Unmarshal(input.Input, &batch); err != nil {
+		return nil
+	}
+
+	if len(batch.Commands) == 0 {
+		return NewResult(Allow, "ctx_batch_execute: queries-only batch")
+	}
+
+	var combined *Result[PreToolUseOutput]
+	for _, cmd := range batch.Commands {
+		subInput := HookInput{
+			Event: input.Event,
+			Name:  "Bash",
+			CWD:   input.CWD,
+			Input: mustMarshal(BashInput{Command: cmd.Command}),
+		}
+		result := h.Evaluate(subInput)
+		if result == nil {
+			result = NewResult(Ask, "no matching rule for: "+cmd.Command)
+		}
+		combined = pickMostRestrictive(combined, result)
+	}
+	return combined
+}
+
 // Evaluate runs all matching rules against the input and picks the best match.
 // For compound Bash commands, each sub-command is evaluated independently and
 // the most restrictive result wins. Returns Ask if nothing matches.
 func (h *Harness) Evaluate(input HookInput) *Result[PreToolUseOutput] {
 	if input.Name == "Bash" {
 		if result := h.evaluateBashCompound(input); result != nil {
+			return result
+		}
+	}
+	if input.Name == ctxBatchExecuteTool {
+		if result := h.evaluateCtxBatchExecute(input); result != nil {
 			return result
 		}
 	}
