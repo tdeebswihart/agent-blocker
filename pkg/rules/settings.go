@@ -1,21 +1,12 @@
 package rules
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/valyala/fastjson"
 )
-
-type settingsFile struct {
-	Permissions settingsPermissions `json:"permissions"`
-}
-
-type settingsPermissions struct {
-	Allow []string `json:"allow"`
-	Ask   []string `json:"ask"`
-	Deny  []string `json:"deny"`
-}
 
 // SettingsRules reads ~/.claude/settings.json and converts its permission
 // strings into Matchers. Returns nil on any error (missing file, bad JSON).
@@ -25,8 +16,14 @@ func SettingsRules(settingsPath, cwd string) []Matcher {
 		return nil
 	}
 
-	var sf settingsFile
-	if err := json.Unmarshal(data, &sf); err != nil {
+	var p fastjson.Parser
+	root, err := p.ParseBytes(data)
+	if err != nil {
+		return nil
+	}
+
+	perms := root.Get("permissions")
+	if perms == nil {
 		return nil
 	}
 
@@ -37,19 +34,20 @@ func SettingsRules(settingsPath, cwd string) []Matcher {
 	opts := PathOpts{CWD: cwd, Home: home, ProjectRoot: cwd}
 
 	var matchers []Matcher
-	for _, perm := range sf.Permissions.Deny {
-		if m := parsePermission(perm, Deny, cwd, opts); m != nil {
-			matchers = append(matchers, m)
-		}
-	}
-	for _, perm := range sf.Permissions.Ask {
-		if m := parsePermission(perm, Ask, cwd, opts); m != nil {
-			matchers = append(matchers, m)
-		}
-	}
-	for _, perm := range sf.Permissions.Allow {
-		if m := parsePermission(perm, Allow, cwd, opts); m != nil {
-			matchers = append(matchers, m)
+	for _, kv := range []struct {
+		key      string
+		decision Decision
+	}{
+		{"deny", Deny},
+		{"ask", Ask},
+		{"allow", Allow},
+	} {
+		arr := perms.GetArray(kv.key)
+		for _, v := range arr {
+			perm := string(v.GetStringBytes())
+			if m := parsePermission(perm, kv.decision, cwd, opts); m != nil {
+				matchers = append(matchers, m)
+			}
 		}
 	}
 	return matchers

@@ -2,6 +2,7 @@ package rules
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -209,17 +210,13 @@ func TestSettingsRules_Integration(t *testing.T) {
 	dir := t.TempDir()
 	settingsPath := filepath.Join(dir, "settings.json")
 
-	settings := settingsFile{
-		Permissions: settingsPermissions{
-			Allow: []string{"Bash(make:*)", "Read", "mcp__gopls__go_*"},
-			Ask:   []string{"Bash(git push)"},
-			Deny:  []string{"Bash(rm -rf:*)"},
-		},
-	}
-	data, err := json.Marshal(settings)
-	if err != nil {
-		t.Fatal(err)
-	}
+	data := fmt.Appendf(nil, `{
+		"permissions": {
+			"allow": ["Bash(make:*)", "Read", "mcp__gopls__go_*"],
+			"ask":   ["Bash(git push)"],
+			"deny":  ["Bash(rm -rf:*)"]
+		}
+	}`)
 	if err := os.WriteFile(settingsPath, data, 0o644); err != nil {
 		t.Fatal(err)
 	}
