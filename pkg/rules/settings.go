@@ -3,12 +3,30 @@ package rules
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/valyala/fastjson"
 )
 
-// SettingsRules reads ~/.claude/settings.json and converts its permission
+// AllSettingsRules loads permissions from all Claude Code settings files:
+// global (~/.claude/settings.json), global-local (~/.claude/settings.local.json),
+// project (<cwd>/.claude/settings.json), project-local (<cwd>/.claude/settings.local.json).
+func AllSettingsRules(home, cwd string) []Matcher {
+	paths := []string{
+		filepath.Join(home, ".claude", "settings.json"),
+		filepath.Join(home, ".claude", "settings.local.json"),
+		filepath.Join(cwd, ".claude", "settings.json"),
+		filepath.Join(cwd, ".claude", "settings.local.json"),
+	}
+	var matchers []Matcher
+	for _, p := range paths {
+		matchers = append(matchers, SettingsRules(p, cwd)...)
+	}
+	return matchers
+}
+
+// SettingsRules reads a Claude settings file and converts its permission
 // strings into Matchers. Returns nil on any error (missing file, bad JSON).
 func SettingsRules(settingsPath, cwd string) []Matcher {
 	data, err := os.ReadFile(settingsPath)

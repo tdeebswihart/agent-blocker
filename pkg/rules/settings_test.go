@@ -260,6 +260,96 @@ func TestSettingsRules_Integration(t *testing.T) {
 	}
 }
 
+func TestAllSettingsRules_MergesMultipleFiles(t *testing.T) {
+	home := t.TempDir()
+	cwd := t.TempDir()
+
+	// Global settings: allow make
+	globalDir := filepath.Join(home, ".claude")
+	if err := os.MkdirAll(globalDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeSettings(t, filepath.Join(globalDir, "settings.json"), `{
+		"permissions": { "allow": ["Bash(make:*)"] }
+	}`)
+
+	// Global-local settings: deny rm -rf
+	writeSettings(t, filepath.Join(globalDir, "settings.local.json"), `{
+		"permissions": { "deny": ["Bash(rm -rf:*)"] }
+	}`)
+
+	// Project settings: ask git push
+	projectDir := filepath.Join(cwd, ".claude")
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeSettings(t, filepath.Join(projectDir, "settings.json"), `{
+		"permissions": { "ask": ["Bash(git push)"] }
+	}`)
+
+	// Project-local settings: allow go test
+	writeSettings(t, filepath.Join(projectDir, "settings.local.json"), `{
+		"permissions": { "allow": ["Bash(go test:*)"] }
+	}`)
+
+	matchers := AllSettingsRules(home, cwd)
+	if len(matchers) != 4 {
+		t.Fatalf("expected 4 matchers, got %d", len(matchers))
+	}
+
+	harness := NewHarness(matchers...)
+
+	// make test → allow (from global)
+	result := harness.Evaluate(HookInput{
+		Event: "PreToolUse", Name: "Bash", CWD: cwd,
+		Input: mustMarshal(BashInput{Command: "make test"}),
+	})
+	if result == nil || result.HookSpecificOutput.PermissionDecision != Allow {
+		t.Errorf("expected allow for make test, got %v", result)
+	}
+
+	// rm -rf → deny (from global-local)
+	result = harness.Evaluate(HookInput{
+		Event: "PreToolUse", Name: "Bash", CWD: cwd,
+		Input: mustMarshal(BashInput{Command: "rm -rf /tmp"}),
+	})
+	if result == nil || result.HookSpecificOutput.PermissionDecision != Deny {
+		t.Errorf("expected deny for rm -rf, got %v", result)
+	}
+
+	// git push → ask (from project)
+	result = harness.Evaluate(HookInput{
+		Event: "PreToolUse", Name: "Bash", CWD: cwd,
+		Input: mustMarshal(BashInput{Command: "git push"}),
+	})
+	if result == nil || result.HookSpecificOutput.PermissionDecision != Ask {
+		t.Errorf("expected ask for git push, got %v", result)
+	}
+
+	// go test → allow (from project-local)
+	result = harness.Evaluate(HookInput{
+		Event: "PreToolUse", Name: "Bash", CWD: cwd,
+		Input: mustMarshal(BashInput{Command: "go test ./..."}),
+	})
+	if result == nil || result.HookSpecificOutput.PermissionDecision != Allow {
+		t.Errorf("expected allow for go test, got %v", result)
+	}
+}
+
+func TestAllSettingsRules_MissingFiles(t *testing.T) {
+	matchers := AllSettingsRules("/nonexistent/home", "/nonexistent/cwd")
+	if len(matchers) != 0 {
+		t.Errorf("expected 0 matchers for missing files, got %d", len(matchers))
+	}
+}
+
+func writeSettings(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSettingsRules_MissingFile(t *testing.T) {
 	matchers := SettingsRules("/nonexistent/path/settings.json", "/work")
 	if matchers != nil {
