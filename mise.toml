@@ -2,6 +2,10 @@
 go = "1.26.0"
 "golangci-lint" = "2.10.1"
 
+[tasks.test]
+description = "Run tests"
+run = "go test ./..."
+
 [tasks.fix]
 description = "Run go fix on all packages"
 run = "go fix ./..."
