@@ -659,6 +659,39 @@ func TestHarness_CompoundBashFindAbsoluteCwdPath(t *testing.T) {
 	}
 }
 
+func TestHarness_FindExecPipedToAllowedCommand(t *testing.T) {
+	h := NewHarness(
+		Bash(Allow, "", "find *"),
+		Bash(Allow, "", "head *"),
+		Bash(Allow, "", "tail *"),
+	)
+
+	// \; is find's -exec terminator. Before the fix, splitCompoundCommand
+	// treated it as a real ; separator, making "2>/dev/null" an orphaned
+	// sub-command that nothing allowed → Ask. Both find and head are allowed,
+	// so the combined result should be Allow.
+	result := h.Evaluate(HookInput{
+		Name: "Bash",
+		Input: mustJSON(BashInput{
+			Command: `find /path -name "*.go" -type f -exec grep -l "callback.*reset\|reset.*callback" {} \; 2>/dev/null | head -10`,
+		}),
+	})
+	if result.HookSpecificOutput.PermissionDecision != Allow {
+		t.Fatalf("expected Allow for find \\; ... | head (both allowed), got %s (%s)",
+			result.HookSpecificOutput.PermissionDecision,
+			result.HookSpecificOutput.PermissionDecisionReason)
+	}
+
+	// Unescaped ; still chains real sub-commands — rm is not allowed → Ask.
+	result = h.Evaluate(HookInput{
+		Name:  "Bash",
+		Input: mustJSON(BashInput{Command: "find /tmp -name foo ; rm -rf /"}),
+	})
+	if result.HookSpecificOutput.PermissionDecision == Allow {
+		t.Fatal("expected non-Allow for find ; rm (rm not allowed)")
+	}
+}
+
 func TestHarness_CompoundBashSingleCommand(t *testing.T) {
 	h := NewHarness(
 		Bash(Allow, "", "go test *"),

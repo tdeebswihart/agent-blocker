@@ -769,6 +769,21 @@ func TestStripXargsPrefix(t *testing.T) {
 	}
 }
 
+func TestBashRule_FindExecEscapedOperators(t *testing.T) {
+	rule := Bash(Allow, "", "find *")
+
+	// \; is find's -exec terminator — backslash-escaped arg, not a shell operator
+	cmd := `find /path -name "*.go" -exec grep -l "SignalWorkflowExecution\|UnpauseActivity" {} \;`
+	if result := rule.Apply(BashInput{Command: cmd}); result == nil {
+		t.Fatal(`expected match — \; is a backslash-escaped argument, not a shell operator`)
+	}
+
+	// Unescaped ; still chains commands and should be blocked
+	if result := rule.Apply(BashInput{Command: "find /tmp -name foo ; rm -rf /"}); result != nil {
+		t.Fatal("expected no match — unescaped ; chains commands")
+	}
+}
+
 func TestBashRule_MiddleWildcard(t *testing.T) {
 	rule := Bash(Allow, "", "git * main")
 

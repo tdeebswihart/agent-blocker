@@ -167,7 +167,40 @@ func bashMatch(pattern, command, cwd string) bool {
 // Redirects (>, 2>&1) are NOT included — they don't chain commands.
 var shellOperators = []string{"&&", "||", ";", "|"}
 
+// replaceEscapedOperators replaces backslash-escaped operator characters with a
+// space when outside of quotes. \; \| \& outside quotes are argument escaping
+// (e.g., find -exec cmd {} \;), not shell operators.
+func replaceEscapedOperators(s string) string {
+	var b strings.Builder
+	inSingle, inDouble := false, false
+	i := 0
+	for i < len(s) {
+		ch := s[i]
+		switch {
+		case ch == '\'' && !inDouble:
+			inSingle = !inSingle
+			b.WriteByte(ch)
+		case ch == '"' && !inSingle:
+			inDouble = !inDouble
+			b.WriteByte(ch)
+		case ch == '\\' && !inSingle && !inDouble && i+1 < len(s):
+			next := s[i+1]
+			if next == ';' || next == '|' || next == '&' || next == '<' || next == '>' {
+				b.WriteByte(' ')
+				i += 2
+				continue
+			}
+			b.WriteByte(ch)
+		default:
+			b.WriteByte(ch)
+		}
+		i++
+	}
+	return b.String()
+}
+
 func hasShellOperators(s string) bool {
+	s = replaceEscapedOperators(s)
 	// Use shellwords to respect quoting — operators inside quotes don't count.
 	// We scan through the raw string but skip quoted regions.
 	tokens, err := shellwords.Split(s)
@@ -547,6 +580,8 @@ func splitCompoundCommand(command string) []string {
 			inDouble = !inDouble
 		case inSingle || inDouble:
 			continue
+		case ch == '\\' && !inSingle && !inDouble:
+			i++ // skip the next character (backslash escape outside quotes)
 		case ch == '&' && i+1 < len(command) && command[i+1] == '&':
 			if part := strings.TrimSpace(command[start:i]); part != "" {
 				parts = append(parts, part)
