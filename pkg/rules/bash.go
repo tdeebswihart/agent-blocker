@@ -167,9 +167,19 @@ func bashMatch(pattern, command, cwd string) bool {
 // Redirects (>, 2>&1) are NOT included — they don't chain commands.
 var shellOperators = []string{"&&", "||", ";", "|"}
 
+// replaceEscapedOperatorsForFind replaces backslash-escaped operator characters with a
+// space when outside of quotes, but only for find commands. \; \| \& in find
+// -exec are argument escaping (e.g., find -exec cmd {} \;), not shell operators.
+func replaceEscapedOperatorsForFind(s string) string {
+	first, _, _ := strings.Cut(s, " ")
+	if first != "find" {
+		return s
+	}
+	return replaceEscapedOperators(s)
+}
+
 // replaceEscapedOperators replaces backslash-escaped operator characters with a
-// space when outside of quotes. \; \| \& outside quotes are argument escaping
-// (e.g., find -exec cmd {} \;), not shell operators.
+// space when outside of quotes.
 func replaceEscapedOperators(s string) string {
 	var b strings.Builder
 	inSingle, inDouble := false, false
@@ -200,7 +210,7 @@ func replaceEscapedOperators(s string) string {
 }
 
 func hasShellOperators(s string) bool {
-	s = replaceEscapedOperators(s)
+	s = replaceEscapedOperatorsForFind(s)
 	// Use shellwords to respect quoting — operators inside quotes don't count.
 	// We scan through the raw string but skip quoted regions.
 	tokens, err := shellwords.Split(s)
