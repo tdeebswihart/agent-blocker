@@ -20,6 +20,34 @@ description = "Lint and autofix with golangci-lint"
 depends = ["format"]
 run = "golangci-lint run --fix"
 
+[tasks.update-flake-hashes]
+description = "Update vendorHash in flake.nix by building and capturing the expected hash"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+FLAKE="flake.nix"
+
+# Zero out the vendor hash to trigger a hash mismatch
+sed -i '' 's|vendorHash = "sha256-[^"]*";|vendorHash = "";|' "$FLAKE"
+
+# Build and capture the expected hash from the error
+if output=$(nix build .# 2>&1); then
+  echo "Build succeeded with empty hash — vendorHash may not be needed"
+  exit 0
+fi
+
+hash=$(echo "$output" | grep -oE 'got:[[:space:]]+sha256-[A-Za-z0-9+/=]+' | awk '{print $2}')
+if [ -z "$hash" ]; then
+  echo "Failed to extract hash from nix build output:" >&2
+  echo "$output" >&2
+  exit 1
+fi
+
+sed -i '' "s|vendorHash = \"\";|vendorHash = \"$hash\";|" "$FLAKE"
+echo "Updated vendorHash to $hash"
+"""
+
 [tasks.install]
 description = "Build and install the binary into ~/.local/bin"
 run = "go build -o ~/.local/bin/agent-blocker ./cmd/main.go"
