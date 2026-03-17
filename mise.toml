@@ -28,11 +28,16 @@ set -euo pipefail
 
 FLAKE="flake.nix"
 
-# Zero out the vendor hash to trigger a hash mismatch
-sed -i '' 's|vendorHash = "sha256-[^"]*";|vendorHash = "";|' "$FLAKE"
+# Capture the current vendor hash
+old_hash=$(grep -oE 'vendorHash = "sha256-[^"]*"' "$FLAKE" | grep -oE 'sha256-[^"]+')
 
-# Build and capture the expected hash from the error
-if output=$(nix build .# 2>&1); then
+# Build in a temp copy to avoid modifying the real flake.nix
+tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+cp -a . "$tmpdir/"
+sed -i '' 's|vendorHash = "sha256-[^"]*";|vendorHash = "";|' "$tmpdir/$FLAKE"
+
+if output=$(nix build "path:$tmpdir#" 2>&1); then
   echo "Build succeeded with empty hash — vendorHash may not be needed"
   exit 0
 fi
@@ -44,7 +49,13 @@ if [ -z "$hash" ]; then
   exit 1
 fi
 
-sed -i '' "s|vendorHash = \"\";|vendorHash = \"$hash\";|" "$FLAKE"
+# Exit quietly if unchanged
+if [ "$hash" = "$old_hash" ]; then
+  exit 0
+fi
+
+# Update the real flake.nix only when the hash changed
+sed -i '' "s|vendorHash = \"$old_hash\";|vendorHash = \"$hash\";|" "$FLAKE"
 echo "Updated vendorHash to $hash"
 """
 

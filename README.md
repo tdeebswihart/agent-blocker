@@ -4,8 +4,8 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) `PreToolUse` hoo
 every tool call before it executes and decides whether to **allow**, **deny**, or **ask** (prompt
 you for confirmation).
 
-Its goal is to eliminate approval fatigue by reasoning through commands with more intelligence than the 
-built-in logic. It DOES NOT guarantee safe execution, nor that approved commands are safe.
+Its goal is to reduce approval fatigue by applying richer matching logic than Claude Code's built-in
+permission system. It does **not** guarantee that approved commands are safe.
 
 ## How it works
 
@@ -19,8 +19,8 @@ Claude Code ──stdin──▶ agent-blocker ──stdout──▶ { "decision
 
 Rules come from two sources:
 
-1. **Built-in defaults** — these matchers (see `pkg/rules`) allow for more complicated logic than 
-   Claude Code's permissions system
+1. **Built-in defaults** (`pkg/rules/default.go`) — semantic matchers for `echo`, `mkdir`, `cd`,
+   and local scripts that require argument-level validation beyond simple glob patterns
 2. **Your Claude Code settings** — permissions defined in `~/.claude/settings.json`,
    `~/.claude/settings.local.json`, and the project-level equivalents under `.claude/`
 
@@ -33,16 +33,23 @@ wins (deny > ask > allow).
   `|`) are split and each sub-command is evaluated independently
 - **Command wrappers** — sees through `timeout`, `xargs`, and output redirects to evaluate the
   underlying command
-- **File operations** (Read, Edit, Grep, Glob) — gitignore-style path patterns with `~` and
-  project-relative resolution; specificity ranking (exact path > glob > match-all)
+- **File operations** (Read, Edit, Grep, Glob, Search) — gitignore-style path patterns with `~`
+  and project-relative resolution; specificity ranking (exact path > glob > match-all)
 - **`cd`** — allows navigation within the project root or `/tmp`, blocks everything else
 - **`find` / `fd`** — allows searches within the project tree, blocks dangerous flags like `-exec`
   and `-delete`
-- **`echo`** — auto-allows echo/printf (safe, read-only operations)
+- **`grep` / `rg`** — allows searches within the project tree; blocks file-reading flags (`-f`,
+  `--file`, `--pre`, `--ignore-file`) that bypass path validation
+- **`head` / `tail`** — allows invocations reading from stdin or safe file paths
+- **`echo`** — auto-allows `echo`/`printf` (read-only)
 - **`mkdir`** — allows directory creation within the project root or `/tmp`
+- **`jj edit` / `jj abandon`** — allows only when the target revision(s) are empty; denies if any
+  revision has changes
 - **Local scripts** — auto-allows execution of programs within the project directory tree
   (e.g., `./script.sh`, `bin/test`)
 - **MCP tools** — glob matching on MCP tool names (e.g., `mcp__gopls__go_*`)
+- **WebFetch / WebSearch** — domain-based matching (e.g., `WebFetch(domain:docs.rs)`)
+- **Agent / Skill** — glob matching on agent name/type or skill name
 - **`ctx_batch_execute`** — evaluates each command in the batch through the full Bash pipeline
 
 ### Logging
@@ -53,7 +60,7 @@ input (large content from Write/Edit is replaced with byte lengths).
 
 ## Installation
 
-### From source (requires Go 1.24+)
+### From source (requires Go 1.26+)
 
 ```bash
 go install github.com/tdeebswihart/agent-blocker/cmd@latest
@@ -73,16 +80,16 @@ mise run install
 ### With Nix
 
 ```bash
-nix run github.com/tdeebswihart/agent-blocker
+nix run github:tdeebswihart/agent-blocker
 # Or add to your flake inputs:
-# agent-blocker.url = "github.com/tdeebswihart/agent-blocker";
+# agent-blocker.url = "github:tdeebswihart/agent-blocker";
 ```
 
 ## Configuration
 
 ### 1. Register the hook
 
-Add agent-blocker as a `PreToolUse` hook in your Claude Code settings. The empty `matcher` means it
+Add agent-blocker as a `PreToolUse` hook in your Claude Code settings. The `"*"` matcher means it
 runs for every tool call.
 
 **`~/.claude/settings.json`** (global) or **`<project>/.claude/settings.json`** (per-project):
@@ -123,11 +130,15 @@ matcher primitives in `pkg/rules`.
       "Bash(go build:*)",
       "Bash(jj log:*)",
       "Bash(jj diff:*)",
-      "mcp__gopls__*"
+      "mcp__gopls__*",
+      "WebFetch(domain:pkg.go.dev)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
       "Read(~/.ssh/**)"
+    ],
+    "ask": [
+      "Bash(curl:*)"
     ]
   }
 }
@@ -140,21 +151,25 @@ matcher primitives in `pkg/rules`.
 | `ToolName` | `Read` | All invocations of that tool |
 | `ToolName(pattern)` | `Bash(go test:*)` | Tool invocations matching the pattern |
 | `mcp__*` glob | `mcp__gopls__go_*` | MCP tools matching the glob |
+| `WebFetch(domain:host)` | `WebFetch(domain:pkg.go.dev)` | Fetch/search requests to a domain |
+| `Agent(pattern)` | `Agent(task*)` | Agent invocations matching name or subagent type |
+| `Skill(pattern)` | `Skill(/verify*)` | Skill invocations matching skill name |
 
 For **Bash** rules, `:*` is shorthand for ` *` (space-star), which matches the command with any
 trailing arguments or no arguments at all. For example, `Bash(go test:*)` matches both `go test`
 and `go test ./...`.
 
-For **Read**, **Edit**, **Grep**, and **Glob** rules, the pattern argument is a gitignore-style path
-pattern. `~` expands to your home directory, and relative paths are resolved against the project
-root.
+For **Read**, **Edit**, **Grep**, **Glob**, and **Search** rules, the pattern argument is a
+gitignore-style path pattern. `~` expands to your home directory, and relative paths are resolved
+against the project root.
 
 ## How decisions are resolved
 
-1. All matching rules are collected from both built-in defaults and settings
-2. The **most specific** match wins (exact path > glob path > match-all)
-3. At equal specificity, the **strictest** decision wins (deny > ask > allow)
-4. If nothing matches, the hook returns no output (passes through to Claude Code's default behavior)
+1. All matching rules are collected from both built-in defaults and settings.
+2. The **most specific** match wins (exact path > glob path > match-all).
+3. At equal specificity, the **strictest** decision wins (deny > ask > allow).
+4. If nothing matches, the hook produces no output and Claude Code falls through to its own
+   permission logic.
 
-For compound Bash commands, each sub-command is evaluated independently and the most restrictive
-result across all sub-commands is returned.
+For compound Bash commands (`&&`, `||`, `;`, `|`), each sub-command is evaluated independently and
+the most restrictive result across all sub-commands is returned.
