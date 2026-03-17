@@ -1,4 +1,4 @@
-module codeberg.org/timods/agent-blocker
+module github.com/tdeebswihart/agent-blocker
 
 go 1.26.0
 

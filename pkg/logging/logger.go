@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"time"
 
-	"codeberg.org/timods/agent-blocker/pkg/rules"
+	"github.com/tdeebswihart/agent-blocker/pkg/rules"
 )
 
 const maxLogSize = 5 * 1024 * 1024 // 5 MB

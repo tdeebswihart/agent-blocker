@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"codeberg.org/timods/agent-blocker/pkg/rules"
+	"github.com/tdeebswihart/agent-blocker/pkg/rules"
 )
 
 func TestSafeProjectName(t *testing.T) {

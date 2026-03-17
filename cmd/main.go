@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"codeberg.org/timods/agent-blocker/pkg/logging"
-	"codeberg.org/timods/agent-blocker/pkg/rules"
+	"github.com/tdeebswihart/agent-blocker/pkg/logging"
+	"github.com/tdeebswihart/agent-blocker/pkg/rules"
 )
 
 const usage = `agent-blocker — a Claude Code PreToolUse hook that auto-allows safe
