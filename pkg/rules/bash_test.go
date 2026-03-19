@@ -437,6 +437,66 @@ func TestBashRule_XargsPrefix(t *testing.T) {
 	}
 }
 
+func TestBashRule_RtkPrefix(t *testing.T) {
+	allow := Bash(Allow, "", "go test *")
+	deny := Bash(Deny, "", "rm -rf *")
+
+	// Basic rtk prefix — should see through to actual command
+	if result := allow.Apply(BashInput{Command: "rtk go test ./..."}); result == nil {
+		t.Fatal("expected match for 'rtk go test ./...'")
+	}
+	if result := deny.Apply(BashInput{Command: "rtk proxy rm -rf /"}); result == nil {
+		t.Fatal("expected deny match for 'rtk proxy rm -rf /'")
+	} else if result.HookSpecificOutput.PermissionDecision != Deny {
+		t.Fatalf("expected Deny, got %s", result.HookSpecificOutput.PermissionDecision)
+	}
+
+	// With global flags
+	if result := allow.Apply(BashInput{Command: "rtk -u go test ./..."}); result == nil {
+		t.Fatal("expected match with -u flag")
+	}
+	if result := allow.Apply(
+		BashInput{Command: "rtk --ultra-compact go test ./..."},
+	); result == nil {
+		t.Fatal("expected match with --ultra-compact flag")
+	}
+	if result := allow.Apply(BashInput{Command: "rtk -v --skip-env go test ./..."}); result == nil {
+		t.Fatal("expected match with multiple flags")
+	}
+
+	// Combined with timeout: rtk wraps timeout
+	if result := allow.Apply(
+		BashInput{Command: "rtk go test ./... "},
+	); result == nil {
+		t.Fatal("expected match with trailing space")
+	}
+
+	// Combined with timeout: timeout wraps rtk
+	if result := allow.Apply(
+		BashInput{Command: "timeout 5m rtk go test ./..."},
+	); result == nil {
+		t.Fatal("expected match with timeout + rtk")
+	}
+
+	// No subcommand after rtk — should NOT match
+	if result := allow.Apply(BashInput{Command: "rtk"}); result != nil {
+		t.Fatal("expected no match for bare rtk")
+	}
+	if result := allow.Apply(BashInput{Command: "rtk -v"}); result != nil {
+		t.Fatal("expected no match for rtk with only flags")
+	}
+
+	// Shell operators with rtk — operator check still applies
+	if result := allow.Apply(BashInput{Command: "rtk go test && rm -rf /"}); result != nil {
+		t.Fatal("expected no match — shell operators should still be caught")
+	}
+
+	// Deny should still catch unsafe commands through rtk
+	if result := deny.Apply(BashInput{Command: "rtk err rm -rf /"}); result == nil {
+		t.Fatal("expected deny match for 'rtk err rm -rf /'")
+	}
+}
+
 func TestBashGrep_XargsPrefix(t *testing.T) {
 	rule := BashGrep("")
 

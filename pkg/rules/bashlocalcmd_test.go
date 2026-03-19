@@ -39,6 +39,8 @@ func TestBashLocalCmd(t *testing.T) {
 		// Edge cases
 		{"with timeout wrapper", "timeout 30 ./build/myapp", true},
 		{"with xargs wrapper", "xargs -I {} ./script.sh {}", true},
+		{"with rtk wrapper", "rtk proxy ./build/myapp", true},
+		{"with rtk flags wrapper", "rtk -u ./build/myapp arg1", true},
 		{"with redirect", "./build/myapp > output.txt", true},
 		{"empty command", "", false},
 	}

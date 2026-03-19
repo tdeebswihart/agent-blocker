@@ -156,6 +156,10 @@ func bashMatch(pattern, command, cwd string) bool {
 	if stripped, ok := stripXargsPrefix(command); ok {
 		return bashMatch(pattern, stripped, cwd)
 	}
+	// See through an `rtk` wrapper to match the underlying command.
+	if stripped, ok := stripRtkPrefix(command); ok {
+		return bashMatch(pattern, stripped, cwd)
+	}
 	// See through output redirects to safe locations (current dir or /tmp/).
 	if stripped, ok := stripRedirects(command, cwd); ok {
 		return bashMatch(pattern, stripped, cwd)
@@ -303,6 +307,60 @@ func stripTimeoutPrefix(command string) (string, bool) {
 	return s, true
 }
 
+// rtkPassthroughSubcommands are rtk subcommands that wrap an arbitrary command
+// (the real command follows the subcommand). These are stripped along with
+// `rtk [flags]` so that the underlying command can be evaluated.
+var rtkPassthroughSubcommands = map[string]bool{
+	"proxy":   true,
+	"err":     true,
+	"test":    true,
+	"summary": true,
+	"rewrite": true,
+}
+
+// stripRtkPrefix removes a leading `rtk [flags]` prefix from a command string,
+// returning `<subcommand> <rest>`. If the subcommand is a known pass-through
+// (proxy, err, test, summary), it is also stripped so the actual command is
+// returned. Returns ("", false) if the command doesn't start with "rtk " or
+// has no subcommand after the flags.
+// Flags (any token starting with "-") are skipped generically.
+func stripRtkPrefix(command string) (string, bool) {
+	s := strings.TrimSpace(command)
+	if !strings.HasPrefix(s, "rtk ") {
+		return "", false
+	}
+	s = strings.TrimSpace(s[len("rtk"):])
+
+	// Skip flags (anything starting with "-").
+	for strings.HasPrefix(s, "-") {
+		end := strings.IndexByte(s, ' ')
+		if end == -1 {
+			return "", false
+		}
+		s = strings.TrimSpace(s[end:])
+	}
+
+	if s == "" {
+		return "", false
+	}
+
+	// If the subcommand is a pass-through wrapper, strip it too so the
+	// underlying command is exposed for rule matching.
+	word := s
+	if before, _, ok := strings.Cut(s, " "); ok {
+		word = before
+	}
+	if rtkPassthroughSubcommands[word] {
+		rest := strings.TrimSpace(s[len(word):])
+		if rest == "" {
+			return "", false
+		}
+		return rest, true
+	}
+
+	return s, true
+}
+
 // unwrapCommand strips known safe wrappers (timeout, xargs) and output
 // redirects from a command string, returning the underlying command. Wrappers
 // are stripped in a loop so that any nesting order (e.g., timeout wrapping
@@ -314,6 +372,10 @@ func unwrapCommand(cmd, cwd string) string {
 			continue
 		}
 		if stripped, ok := stripXargsPrefix(cmd); ok {
+			cmd = stripped
+			continue
+		}
+		if stripped, ok := stripRtkPrefix(cmd); ok {
 			cmd = stripped
 			continue
 		}
